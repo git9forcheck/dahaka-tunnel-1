@@ -1,0 +1,7 @@
+__pycache__/
+*.db-shm
+*.db-wal
+*.log
+job_screenshots/
+diag_screenshots/
+*.png

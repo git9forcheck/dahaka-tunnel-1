@@ -1,0 +1,135 @@
+name: Run Dahaka Dashboard
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Manual trigger from GitHub UI
+
+jobs:
+  run-dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 hours max
+
+    steps:
+      # ─── Checkout the repo ───
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ─── Set up Python ───
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ─── Install System Dependencies (Xvfb support) ───
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
+      # ─── Install Python Dependencies ───
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install flask flask-socketio selenium webdriver-manager requests urllib3 colorama simple-websocket
+
+      # ─── Install cloudflared (for public tunnel) ───
+      - name: Install cloudflared
+        run: |
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb
+          sudo dpkg -i cloudflared.deb
+
+      # ─── Start Flask/SocketIO app under Xvfb in background ───
+      - name: Start Dahaka Dashboard
+        run: |
+          # Use xvfb-run to provide a virtual display for Chrome/Selenium instances
+          nohup xvfb-run --server-args="-screen 0 1024x768x24" python -c "import dahaka_app, threading; threading.Thread(target=dahaka_app.update_status, daemon=True).start(); dahaka_app.socketio.run(dahaka_app.app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)" > flask.log 2>&1 &
+          
+          echo "Waiting for Flask to start..."
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:5000 > /dev/null 2>&1; then
+              echo "Flask is up on port 5000!"
+              break
+            fi
+            sleep 1
+          done
+
+      # ─── Start cloudflared tunnel ───
+      - name: Start Cloudflare Tunnel
+        run: |
+          # Start tunnel in background, log output to find the URL
+          cloudflared tunnel --url http://localhost:5000 --no-autoupdate > cloudflared.log 2>&1 &
+          TUNNEL_PID=$!
+          echo "Tunnel PID: $TUNNEL_PID"
+
+          # Wait for the tunnel URL to appear in the log
+          echo "Waiting for tunnel URL..."
+          for i in $(seq 1 60); do
+            TUNNEL_URL=$(grep -o 'https://[-a-zA-Z0-9.]*trycloudflare.com' cloudflared.log | head -n 1)
+            if [ -n "$TUNNEL_URL" ]; then
+              break
+            fi
+            sleep 2
+          done
+
+          if [ -z "$TUNNEL_URL" ]; then
+            echo "ERROR: Could not get tunnel URL. Cloudflared log:"
+            cat cloudflared.log
+            exit 1
+          fi
+
+          echo ""
+          echo "=============================================="
+          echo "  🌐 DAHAKA DASHBOARD IS LIVE!"
+          echo "  Open this URL in your browser:"
+          echo ""
+          echo "  $TUNNEL_URL"
+          echo ""
+          echo "=============================================="
+          echo ""
+          echo "TUNNEL_URL=$TUNNEL_URL" >> $GITHUB_ENV
+
+      # ─── Report Tunnel URL ───
+      - name: Report Tunnel URL
+        run: |
+          CLEANED_REPO=$(echo "${{ github.repository }}" | sed 's/\//_/g')
+          curl -H "Title: Tunnel URL for $CLEANED_REPO" -d "$TUNNEL_URL" "https://ntfy.sh/dahaka_tunnels_$CLEANED_REPO"
+
+      # ─── Keep alive ───
+      - name: Keep alive (check every 5 min)
+        run: |
+          echo "Dashboard URL: $TUNNEL_URL"
+          echo ""
+          echo "The workflow will stay alive for up to 6 hours."
+          echo "Cancel the workflow run from GitHub to stop it early."
+          echo ""
+
+          # Stream flask.log in background so we can see server output
+          tail -f flask.log &
+          TAIL_PID=$!
+
+          # Keep the workflow alive — print status every 5 minutes
+          COUNTER=0
+          MAX_ITERATIONS=72  # 72 x 5min = 360min = 6 hours
+          while [ $COUNTER -lt $MAX_ITERATIONS ]; do
+            sleep 300
+            COUNTER=$((COUNTER + 1))
+
+            # Health check
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000 || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "[$(date)] ✅ Flask alive (HTTP $HTTP_CODE) — $TUNNEL_URL — Iteration $COUNTER/$MAX_ITERATIONS"
+            else
+              echo "[$(date)] ⚠️  Flask returned HTTP $HTTP_CODE — restarting..."
+              # Restart Flask app under xvfb
+              nohup xvfb-run --server-args="-screen 0 1024x768x24" python -c "import dahaka_app, threading; threading.Thread(target=dahaka_app.update_status, daemon=True).start(); dahaka_app.socketio.run(dahaka_app.app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)" > flask.log 2>&1 &
+              sleep 5
+              # Re-tail the new log
+              kill $TAIL_PID 2>/dev/null
+              tail -f flask.log &
+              TAIL_PID=$!
+            fi
+          done
+          kill $TAIL_PID 2>/dev/null
+          echo "Max runtime reached. Shutting down."

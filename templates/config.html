@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dahaka — Config</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <style>
+    :root{--bg:#081120;--bg2:#0b1730;--card:rgba(255,255,255,.08);--border:rgba(145,164,201,.18);--text:#e6edf7;--muted:#9ca9c4;--accent:#7394e6;--good:#35e49a;--bad:#ff5e73;--warn:#ffc14d;--radius:16px}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at top left,rgba(115,148,230,.14),transparent 34%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);min-height:100vh;padding-top:64px}
+    .nav{position:fixed;top:0;left:0;right:0;z-index:999;display:flex;align-items:center;gap:8px;padding:12px 18px;background:rgba(6,12,24,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+    .nav .brand{font-weight:900;font-size:16px;margin-right:12px;display:flex;align-items:center;gap:8px}
+    .nav a{padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;color:var(--muted);text-decoration:none;border:1px solid transparent;transition:all .15s}
+    .nav a:hover{color:var(--text);background:rgba(255,255,255,.04)}
+    .nav a.active{background:rgba(107,167,255,.18);border-color:rgba(141,165,241,.5);color:#fff;font-weight:800}
+    .wrap{max-width:900px;margin:0 auto;padding:24px 18px}
+    h2{font-size:20px;font-weight:900;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+    .card{border-radius:var(--radius);border:1px solid var(--border);background:linear-gradient(135deg,rgba(11,23,48,.96),rgba(8,17,32,.98));overflow:hidden;margin-bottom:20px}
+    .card-hd{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(107,167,255,.08),rgba(53,228,154,.04))}
+    .card-hd h3{font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.3px}
+    .card-hd .ico{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(107,167,255,.15);border:1px solid rgba(107,167,255,.3);font-size:13px}
+    .card-hd .badge{margin-left:auto;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(67,211,255,.12);border:1px solid rgba(67,211,255,.3);color:#b8ecff}
+    .card-bd{padding:16px}
+    .fg{margin-bottom:14px}
+    .fg label{display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px}
+    .fg input,.fg select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);font:inherit;font-size:13px;font-weight:600;outline:none;transition:border-color .15s}
+    .fg input:focus,.fg select:focus{border-color:rgba(107,167,255,.5)}
+    .fg select{cursor:pointer}
+    .fg select option{background:#0b1730;color:var(--text)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .btn{border:1px solid rgba(255,255,255,.14);background:rgba(122,167,255,.14);color:rgba(255,255,255,.92);padding:10px 18px;border-radius:14px;cursor:pointer;font:inherit;font-weight:800;font-size:13px;display:inline-flex;align-items:center;gap:8px;transition:all .2s}
+    .btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+    .btn.save{background:linear-gradient(135deg,rgba(53,228,154,.22),rgba(67,211,255,.18));border-color:rgba(53,228,154,.4);color:#b4ffd8}
+    .btn.sm{padding:6px 12px;font-size:11px;border-radius:10px}
+    .btn.danger{background:rgba(255,94,115,.14);border-color:rgba(255,94,115,.3);color:#ffb0bb}
+    .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:800;background:rgba(53,228,154,.15);border:1px solid rgba(53,228,154,.4);color:#b4ffd8;display:none;animation:fadeIn .3s ease}
+    .toast.show{display:block}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .hint{font-size:10px;color:var(--muted);margin-top:4px;font-weight:600}
+    /* Proxy mode toggle */
+    .mode-toggle{display:flex;gap:0;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:14px}
+    .mode-opt{flex:1;padding:12px 16px;text-align:center;font-size:13px;font-weight:800;cursor:pointer;background:rgba(255,255,255,.03);color:var(--muted);transition:all .18s;border:none;font-family:inherit;border-right:1px solid var(--border)}
+    .mode-opt:last-child{border-right:none}
+    .mode-opt.active{background:rgba(107,167,255,.18);color:#fff}
+    .mode-opt:hover:not(.active){background:rgba(255,255,255,.06);color:var(--text)}
+    /* Conditional sections */
+    .proxy-section{display:none}.proxy-section.show{display:block}
+    /* Rotated proxy items */
+    .rp-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:rgba(0,0,0,.12);margin-bottom:6px;animation:fadeIn .3s ease}
+    .rp-item .addr{font-weight:800;font-size:13px;font-family:ui-monospace,monospace;color:#43d3ff}
+    .rp-item .del{margin-left:auto;cursor:pointer;color:var(--bad);font-weight:900;font-size:14px;opacity:.5;transition:opacity .15s}
+    .rp-item .del:hover{opacity:1}
+    .add-rp{display:grid;grid-template-columns:2fr 1fr auto;gap:8px;align-items:end;margin-top:10px}
+    .add-rp .fg{margin:0}
+    /* Work mode toggle */
+    .wm-toggle{display:flex;gap:0;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:14px}
+    .wm-opt{flex:1;padding:10px 8px;text-align:center;font-size:11px;font-weight:800;cursor:pointer;background:rgba(255,255,255,.03);color:var(--muted);transition:all .18s;border:none;border-right:1px solid var(--border);font-family:inherit;line-height:1.3}
+    .wm-opt:last-child{border-right:none}
+    .wm-opt.active{background:rgba(107,167,255,.18);color:#fff}
+    .wm-opt:hover:not(.active){background:rgba(255,255,255,.06);color:var(--text)}
+    /* Round robin preview */
+    .rr-preview{display:none;margin-top:12px;border-radius:10px;border:1px solid var(--border);background:rgba(0,0,0,.12);overflow:hidden}
+    .rr-preview.show{display:block}
+    .rr-hdr{padding:8px 12px;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:1px solid var(--border);background:rgba(107,167,255,.04)}
+    .rr-item{display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;font-weight:700}
+    .rr-item:last-child{border-bottom:none}
+    .rr-item .rr-b{width:110px;flex-shrink:0;padding:3px 8px;border-radius:6px;text-align:center;font-size:10px;font-weight:900;background:rgba(107,167,255,.12);border:1px solid rgba(107,167,255,.2);color:#b8d9ff}
+    .rr-item .rr-arrow{color:var(--muted);font-size:10px}
+    .rr-item .rr-d{padding:3px 10px;border-radius:6px;font-size:11px;font-weight:800;background:rgba(53,228,154,.08);border:1px solid rgba(53,228,154,.2);color:#b4ffd8}
+    .rr-item select.rr-sel{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);font:inherit;font-size:11px;font-weight:700;outline:none;flex:1;cursor:pointer}
+    .rr-item select.rr-sel option{background:#0b1730}
+    .rr-radios{display:flex;gap:0;margin:10px 12px;border-radius:10px;overflow:hidden;border:1px solid var(--border)}
+    .rr-radio{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 12px;cursor:pointer;font-size:11px;font-weight:800;color:var(--muted);background:rgba(255,255,255,.02);transition:all .15s;border-right:1px solid var(--border)}
+    .rr-radio:last-child{border-right:none}
+    .rr-radio.active{background:rgba(107,167,255,.15);color:#fff}
+    .rr-radio:hover:not(.active){background:rgba(255,255,255,.05);color:var(--text)}
+    .rr-radio .dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted);display:flex;align-items:center;justify-content:center;transition:all .15s}
+    .rr-radio.active .dot{border-color:#7394e6;background:rgba(107,167,255,.2)}
+    .rr-radio.active .dot::after{content:'';width:6px;height:6px;border-radius:50%;background:#7394e6}
+    /* CSS Check toggle */
+    .css-toggle{display:flex;gap:0;border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-top:4px}
+    .css-opt{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 14px;cursor:pointer;font-size:12px;font-weight:800;color:var(--muted);background:rgba(255,255,255,.02);transition:all .18s;border:none;border-right:1px solid var(--border);font-family:inherit}
+    .css-opt:last-child{border-right:none}
+    .css-opt.active{background:rgba(107,167,255,.18);color:#fff}
+    .css-opt:hover:not(.active){background:rgba(255,255,255,.05);color:var(--text)}
+    .css-opt .dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted);display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+    .css-opt.active .dot{border-color:#35e49a;background:rgba(53,228,154,.2)}
+    .css-opt.active .dot::after{content:'';width:6px;height:6px;border-radius:50%;background:#35e49a}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <span class="brand">⚡ Dahaka</span>
+  <a href="/config" class="active">⚙️ Config</a>
+  <a href="/automation">🤖 Automation</a>
+  <a href="/job">📊 Job</a>
+  <a href="/email-lists">📋 Email Lists</a>
+</nav>
+<div class="wrap">
+  <h2>⚙️ Configuration</h2>
+
+  <!-- Proxy Settings -->
+  <div class="card">
+    <div class="card-hd"><span class="ico">🌐</span><h3>Proxy Settings</h3></div>
+    <div class="card-bd">
+      <div class="mode-toggle">
+        <button id="mode-local" class="mode-opt active" onclick="setMode('local_file')">📁 Local File</button>
+        <button id="mode-rotated" class="mode-opt" onclick="setMode('rotated_ip')">🔄 Rotated IP</button>
+        <button id="mode-noproxy" class="mode-opt" onclick="setMode('no_proxy')">🚫 No Proxy</button>
+      </div>
+
+      <!-- Local File section -->
+      <div class="proxy-section show" id="sec-local">
+        <div class="fg">
+          <label>Proxy File Path</label>
+          <input id="proxy_file" type="text" placeholder="google_valid_proxies.txt">
+          <div class="hint">Text file with one proxy per line (ip:port)</div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <div class="fg"><label>Max Retries</label><input id="proxy_max_retries" type="number" min="0"></div>
+          <div class="fg"><label>Turbo Mode</label><select id="turbo_mode"><option value="1">Enabled</option><option value="0">Disabled</option></select></div>
+        </div>
+      </div>
+
+      <!-- Rotated IP section -->
+      <div class="proxy-section" id="sec-rotated">
+        <div id="rp-list"></div>
+        <div class="add-rp">
+          <div class="fg"><label>IP Address</label><input id="rp-ip" type="text" placeholder="192.168.1.100"></div>
+          <div class="fg"><label>Port</label><input id="rp-port" type="number" placeholder="8080" min="1" max="65535"></div>
+          <button class="btn sm" onclick="addRP()" style="height:42px">➕ Add</button>
+        </div>
+        <div class="hint" style="margin-top:8px">Add multiple rotated IP proxies. Each will be used as a gateway for browser sessions.</div>
+      </div>
+
+      <!-- No Proxy section -->
+      <div class="proxy-section" id="sec-noproxy">
+        <div style="text-align:center;padding:20px 16px">
+          <div style="font-size:40px;margin-bottom:10px">🚫</div>
+          <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:6px">No Proxy — Direct Connection</div>
+          <div style="font-size:12px;color:var(--muted);font-weight:600;line-height:1.6">Browsers will connect directly to target websites without using any proxy.<br>Use this when you don't need proxy rotation or when testing locally.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Browser Settings -->
+  <div class="card">
+    <div class="card-hd"><span class="ico">🖥️</span><h3>Browser Settings</h3></div>
+    <div class="card-bd">
+      <div class="row3">
+        <div class="fg"><label>Concurrent Browsers</label><input id="concurrent_browsers" type="number" min="1" max="50"></div>
+        <div class="fg"><label>Page Load Timeout (s)</label><input id="page_load_timeout" type="number" min="1" max="120" placeholder="10"></div>
+        <div class="fg"><label>Headless Mode</label><select id="headless_mode"><option value="0">Disabled (Visible)</option><option value="1">Enabled (Hidden)</option></select></div>
+      </div>
+      <div class="fg" style="margin-top:14px">
+        <label>Browser Work Mode</label>
+        <div class="wm-toggle">
+          <button id="wm-sde" class="wm-opt active" onclick="setWorkMode('same_domain_diff_email')">🔀 Same Domain<br>Diff Emails</button>
+          <button id="wm-sdse" class="wm-opt" onclick="setWorkMode('same_domain_same_email')">🔁 Same Domain<br>Same Email</button>
+          <button id="wm-md" class="wm-opt" onclick="setWorkMode('multi_domain')">🌐 Multi Domain<br>Round Robin</button>
+        </div>
+        <div class="hint">How browsers work together: different emails per browser, same email on all, or rotate across domains.</div>
+        <div class="rr-preview" id="rr-preview">
+          <div class="rr-hdr">🌐 Browser → Domain Mapping</div>
+          <div class="rr-radios">
+            <div class="rr-radio active" id="rr-same" onclick="setMdEmailMode('same_email')"><span class="dot"></span>🔁 Same Email across all domains</div>
+            <div class="rr-radio" id="rr-unique" onclick="setMdEmailMode('unique_email')"><span class="dot"></span>🔀 1:1 — Unique email per browser</div>
+          </div>
+          <div id="rr-list"></div>
+        </div>
+      </div>
+      <div class="fg" style="margin-top:14px">
+        <label>CSS Included</label>
+        <div class="css-toggle">
+          <div class="css-opt active" id="css-yes" onclick="setCSSCheck(1)"><span class="dot"></span> ✅ Yes — Load HTML + CSS + JS</div>
+          <div class="css-opt" id="css-no" onclick="setCSSCheck(0)"><span class="dot"></span> ⚡ No — Load HTML + JS only</div>
+        </div>
+        <div class="hint">When set to No, CSS stylesheets and fonts are blocked — pages load faster through proxies with less bandwidth. Only HTML and JavaScript are loaded. Use this for automation where visual rendering doesn't matter.</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn save" onclick="saveConfig()">💾 Save Configuration</button>
+</div>
+<div class="toast" id="toast">✅ Config saved</div>
+
+<script>
+const socket = io();
+let currentMode = 'local_file';
+let rotatedProxies = [];
+
+let currentWorkMode = 'same_domain_diff_email';
+
+const FIELDS = ['concurrent_browsers','proxy_file','proxy_mode','headless_mode',
+  'proxy_max_retries','turbo_mode','page_load_timeout','css_check_enabled'];
+
+let currentCSSCheck = 1;
+function setCSSCheck(val){
+  currentCSSCheck = val;
+  document.getElementById('css-yes').classList.toggle('active', val===1);
+  document.getElementById('css-no').classList.toggle('active', val===0);
+}
+
+function setMode(mode){
+  currentMode = mode;
+  document.getElementById('mode-local').classList.toggle('active', mode==='local_file');
+  document.getElementById('mode-rotated').classList.toggle('active', mode==='rotated_ip');
+  document.getElementById('mode-noproxy').classList.toggle('active', mode==='no_proxy');
+  document.getElementById('sec-local').classList.toggle('show', mode==='local_file');
+  document.getElementById('sec-rotated').classList.toggle('show', mode==='rotated_ip');
+  document.getElementById('sec-noproxy').classList.toggle('show', mode==='no_proxy');
+  socket.emit('set_proxy_mode', {mode});
+}
+
+function loadConfig(cfg){
+  FIELDS.forEach(f=>{
+    const el = document.getElementById(f);
+    if(el && cfg[f] !== undefined) el.value = cfg[f];
+  });
+  currentMode = cfg.proxy_mode || 'local_file';
+  document.getElementById('mode-local').classList.toggle('active', currentMode==='local_file');
+  document.getElementById('mode-rotated').classList.toggle('active', currentMode==='rotated_ip');
+  document.getElementById('mode-noproxy').classList.toggle('active', currentMode==='no_proxy');
+  document.getElementById('sec-local').classList.toggle('show', currentMode==='local_file');
+  document.getElementById('sec-rotated').classList.toggle('show', currentMode==='rotated_ip');
+  document.getElementById('sec-noproxy').classList.toggle('show', currentMode==='no_proxy');
+  // Work mode
+  currentWorkMode = cfg.browser_work_mode || 'same_domain_diff_email';
+  document.querySelectorAll('.wm-opt').forEach(b=>b.classList.remove('active'));
+  const wmMap={'same_domain_diff_email':'wm-sde','same_domain_same_email':'wm-sdse','multi_domain':'wm-md'};
+  if(wmMap[currentWorkMode]) document.getElementById(wmMap[currentWorkMode]).classList.add('active');
+  // Multi domain email mode
+  currentMdEmailMode = cfg.multi_domain_email_mode || 'same_email';
+  document.getElementById('rr-same').classList.toggle('active', currentMdEmailMode==='same_email');
+  document.getElementById('rr-unique').classList.toggle('active', currentMdEmailMode==='unique_email');
+  document.getElementById('rr-preview').classList.toggle('show', currentWorkMode==='multi_domain');
+  // Browser domain map
+  try { browserDomainMap = cfg.browser_domain_map ? JSON.parse(cfg.browser_domain_map) : {}; } catch(e){ browserDomainMap={}; }
+  if(currentWorkMode==='multi_domain') renderRoundRobin();
+  // CSS check
+  currentCSSCheck = cfg.css_check_enabled !== undefined ? cfg.css_check_enabled : 1;
+  document.getElementById('css-yes').classList.toggle('active', currentCSSCheck===1);
+  document.getElementById('css-no').classList.toggle('active', currentCSSCheck===0);
+}
+
+function saveConfig(){
+  const data = {};
+  FIELDS.forEach(f=>{
+    const el = document.getElementById(f);
+    if(el){
+      const v = el.value;
+      data[f] = el.type==='number' ? parseInt(v)||0 : v;
+    }
+  });
+  data.proxy_mode = currentMode;
+  data.browser_work_mode = currentWorkMode;
+  data.multi_domain_email_mode = currentMdEmailMode;
+  data.browser_domain_map = JSON.stringify(browserDomainMap);
+  data.css_check_enabled = currentCSSCheck;
+  fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+    .then(r=>r.json())
+    .then(cfg=>{
+      loadConfig(cfg);
+      const t=document.getElementById('toast');
+      t.classList.add('show');
+      setTimeout(()=>t.classList.remove('show'),2500);
+    })
+    .catch(e=>{alert('Failed to save: '+e.message)});
+}
+
+function setWorkMode(mode){
+  currentWorkMode = mode;
+  document.querySelectorAll('.wm-opt').forEach(b=>b.classList.remove('active'));
+  const wmMap={'same_domain_diff_email':'wm-sde','same_domain_same_email':'wm-sdse','multi_domain':'wm-md'};
+  if(wmMap[mode]) document.getElementById(wmMap[mode]).classList.add('active');
+  document.getElementById('rr-preview').classList.toggle('show', mode==='multi_domain');
+  if(mode==='multi_domain') renderRoundRobin();
+}
+
+let currentMdEmailMode = 'same_email';
+function setMdEmailMode(mode){
+  currentMdEmailMode = mode;
+  document.getElementById('rr-same').classList.toggle('active', mode==='same_email');
+  document.getElementById('rr-unique').classList.toggle('active', mode==='unique_email');
+}
+
+let allDomains = [];
+let browserDomainMap = {}; // {0: domainId, 1: domainId, ...}
+function renderRoundRobin(){
+  const n = parseInt(document.getElementById('concurrent_browsers').value) || 1;
+  const rl = document.getElementById('rr-list');
+  if(!allDomains.length){
+    rl.innerHTML='<div style="color:var(--muted);font-size:11px;text-align:center;padding:12px">No domains configured. Add domains in the Automation page first.</div>';
+    return;
+  }
+  let html='';
+  for(let i=0;i<n;i++){
+    // Default to round-robin if not set
+    if(!browserDomainMap[i]) browserDomainMap[i]=allDomains[i % allDomains.length].id;
+    const opts=allDomains.map(d=>`<option value="${d.id}" ${browserDomainMap[i]==d.id?'selected':''}>${d.letter?d.letter+' — ':''}${d.name}</option>`).join('');
+    html+=`<div class="rr-item"><span class="rr-b">🖥️ Browser ${i+1}</span><span class="rr-arrow">➡</span><select class="rr-sel" onchange="browserDomainMap[${i}]=parseInt(this.value)">${opts}</select></div>`;
+  }
+  rl.innerHTML=html;
+}
+
+// Rotated proxies
+function renderRP(){
+  const el = document.getElementById('rp-list');
+  el.innerHTML = rotatedProxies.map(p =>
+    `<div class="rp-item"><span class="addr">${p.ip}:${p.port}</span><span class="del" onclick="delRP(${p.id})">✕</span></div>`
+  ).join('') || '<div style="color:var(--muted);font-size:12px;text-align:center;padding:10px">No rotated proxies added yet</div>';
+}
+
+function addRP(){
+  const ip = document.getElementById('rp-ip').value.trim();
+  const port = parseInt(document.getElementById('rp-port').value) || 0;
+  if(!ip || !port) return;
+  fetch('/api/rotated_proxies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ip,port})})
+    .then(r=>r.json()).then(list=>{rotatedProxies=list;renderRP()});
+  document.getElementById('rp-ip').value = '';
+  document.getElementById('rp-port').value = '';
+}
+
+function delRP(id){
+  fetch('/api/rotated_proxies/'+id,{method:'DELETE'})
+    .then(r=>r.json()).then(list=>{rotatedProxies=list;renderRP()});
+}
+
+socket.on('config_saved', cfg => {
+  loadConfig(cfg);
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+});
+
+socket.on('rotated_proxies_updated', list => {
+  rotatedProxies = list;
+  renderRP();
+});
+
+socket.on('proxy_mode_changed', d => {
+  currentMode = d.mode;
+  document.getElementById('mode-local').classList.toggle('active', d.mode==='local_file');
+  document.getElementById('mode-rotated').classList.toggle('active', d.mode==='rotated_ip');
+  document.getElementById('mode-noproxy').classList.toggle('active', d.mode==='no_proxy');
+  document.getElementById('sec-local').classList.toggle('show', d.mode==='local_file');
+  document.getElementById('sec-rotated').classList.toggle('show', d.mode==='rotated_ip');
+  document.getElementById('sec-noproxy').classList.toggle('show', d.mode==='no_proxy');
+});
+
+// Load on init — load domains FIRST, then config so renderRoundRobin works
+Promise.all([
+  fetch('/api/domains').then(r=>r.json()),
+  fetch('/api/config').then(r=>r.json()),
+  fetch('/api/rotated_proxies').then(r=>r.json())
+]).then(([doms, cfg, rp])=>{
+  allDomains = doms;
+  rotatedProxies = rp;
+  renderRP();
+  loadConfig(cfg);
+});
+// Re-render round robin when browser count changes
+document.getElementById('concurrent_browsers').addEventListener('input', function(){ if(currentWorkMode==='multi_domain') renderRoundRobin(); });
+</script>
+</body>
+</html>

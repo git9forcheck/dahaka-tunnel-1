@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dahaka — Email Lists</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#071120;--panel:#0d1a2d;--panel-2:#11233c;--border:#1f3a5c;--text:#e7eefc;--muted:#9ab0d0;--green:#1fd47a;--red:#ff5d6c;--yellow:#ffc44d;--blue:#53a6ff;--white:#fff;--shadow:0 10px 35px rgba(0,0,0,.28);--radius:16px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at top left,rgba(39,112,255,.12),transparent 28%),linear-gradient(180deg,#06101d,#091628);color:var(--text);min-height:100vh;padding-top:64px}
+.nav{position:fixed;top:0;left:0;right:0;z-index:999;display:flex;align-items:center;gap:8px;padding:12px 18px;background:rgba(6,12,24,.94);backdrop-filter:blur(14px);border-bottom:1px solid rgba(145,164,201,.18)}
+.nav .brand{font-weight:900;font-size:16px;margin-right:12px}
+.nav a{padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;color:var(--muted);text-decoration:none;border:1px solid transparent;transition:all .15s}
+.nav a:hover{color:var(--text);background:rgba(255,255,255,.04)}
+.nav a.active{background:rgba(107,167,255,.18);border-color:rgba(141,165,241,.5);color:#fff;font-weight:800}
+.wrap{width:min(1600px,calc(100% - 20px));margin:10px auto}
+.card{background:rgba(12,24,43,.94);border:1px solid rgba(83,166,255,.13);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.card-hd{display:flex;align-items:center;gap:10px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid rgba(83,166,255,.1)}
+.card-hd h3{font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.3px;flex:1}
+.badge{padding:2px 10px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(67,211,255,.12);border:1px solid rgba(67,211,255,.3);color:#b8ecff}
+button{border:0;border-radius:10px;padding:10px 14px;cursor:pointer;color:white;font-size:14px;font-weight:700;font-family:inherit;transition:all .15s}
+button:hover{filter:brightness(1.1);transform:translateY(-1px)}
+button:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.primary{background:linear-gradient(90deg,#1a73ff,#3d9bff)}
+.secondary{background:linear-gradient(90deg,#23415f,#31577c)}
+.accent{background:linear-gradient(90deg,#6f46ff,#955dff)}
+.danger{background:rgba(255,94,115,.25);border:1px solid rgba(255,94,115,.3);color:#ffb0bb}
+.success{background:linear-gradient(135deg,rgba(53,228,154,.3),rgba(67,211,255,.2));border:1px solid rgba(53,228,154,.4);color:#b4ffd8}
+.sm{padding:6px 12px;font-size:11px;border-radius:8px}
+.fg{margin-bottom:8px}
+.fg label{display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:4px}
+.fg input,.fg textarea,.fg select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#081425;color:var(--text);font:inherit;font-size:13px;outline:none}
+.fg textarea{min-height:100px;resize:vertical;font-family:ui-monospace,monospace;font-size:12px}
+.create-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.create-row .fg{flex:1;min-width:200px;margin:0}
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.stat-box{background:linear-gradient(180deg,rgba(18,36,61,.98),rgba(10,22,37,.98));border:1px solid rgba(83,166,255,.12);border-radius:12px;padding:10px;text-align:center}
+.stat-label{color:var(--muted);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.stat-value{font-size:20px;font-weight:900;font-family:ui-monospace,monospace}
+.v-green{color:var(--green)}.v-red{color:var(--red)}.v-yellow{color:var(--yellow)}.v-blue{color:var(--blue)}.v-white{color:var(--white)}
+/* Progress */
+.progress-track{width:100%;height:8px;border-radius:999px;overflow:hidden;background:#0a1526;border:1px solid var(--border);margin-bottom:4px}
+.progress-bar{height:100%;width:0%;background:linear-gradient(90deg,#1fd47a,#53a6ff);transition:width .35s ease}
+.progress-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:10px}
+/* Domain pills */
+.dom-pills{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.dom-pill{padding:3px 8px;border-radius:6px;font-size:9px;font-weight:800;background:rgba(67,211,255,.08);border:1px solid rgba(67,211,255,.15);color:#a3e4ff}
+/* Actions */
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.lc-time{font-size:9px;color:rgba(255,255,255,.3);font-weight:700;margin-top:10px}
+/* Table — exact script1.py design */
+.table-section{display:none;margin-top:14px;border-top:1px solid rgba(83,166,255,.1);padding-top:14px;animation:fadeIn .3s ease}
+.table-section.open{display:block}
+/* Pagination */
+.pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:10px 4px;flex-wrap:wrap}
+.pagination .pg-info{font-size:11px;color:var(--muted);font-weight:700}
+.pagination .pg-controls{display:flex;align-items:center;gap:6px}
+.pg-btn{padding:6px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;border:1px solid rgba(83,166,255,.2);background:rgba(83,166,255,.08);color:var(--blue);transition:all .15s;user-select:none}
+.pg-btn:hover:not(.pg-disabled){background:rgba(83,166,255,.2);border-color:rgba(83,166,255,.4)}
+.pg-btn.pg-disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
+.pg-btn.pg-active{background:rgba(83,166,255,.25);border-color:var(--blue);color:var(--white)}
+.pg-select{padding:5px 8px;border-radius:8px;font-size:11px;font-weight:700;border:1px solid rgba(83,166,255,.2);background:#081425;color:var(--text);cursor:pointer;outline:none;font-family:inherit}
+.pg-select option{background:#0b1730}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.results-header{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:13px}
+.filter-pill{padding:7px 10px;border-radius:999px;border:1px solid rgba(83,166,255,.16);background:rgba(255,255,255,.03);cursor:pointer;user-select:none;font-size:11px;font-weight:700;color:var(--muted);transition:all .15s}
+.filter-pill.active{color:var(--white);border-color:rgba(83,166,255,.4);background:rgba(107,167,255,.18)}
+.filter-pill:hover:not(.active){color:var(--text);background:rgba(255,255,255,.06)}
+.table-wrap{overflow-x:auto;border:1px solid rgba(83,166,255,.12);border-radius:14px;background:rgba(7,17,32,.55)}
+table{width:100%;border-collapse:collapse;min-width:800px}
+thead th{position:sticky;top:0;z-index:1;background:linear-gradient(180deg,#324a69,#2a3f59);color:#f3f7ff;font-size:12px;text-transform:uppercase;letter-spacing:.03em;padding:8px 6px;border-right:1px solid rgba(255,255,255,.10);white-space:nowrap;cursor:pointer;user-select:none}
+thead th:hover{color:var(--blue)}
+tbody td{padding:7px 6px;border-top:1px solid rgba(255,255,255,.06);border-right:1px solid rgba(255,255,255,.05);font-size:13px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+tbody tr:hover{background:rgba(83,166,255,.06)}
+td.email-cell{text-align:left;color:#ffefe8;font-weight:700}
+td.cell-expand{cursor:pointer}
+td.expanded-cell{white-space:normal!important;overflow:visible!important;text-overflow:unset!important;word-break:break-word;line-height:1.35}
+.tiny-dot{display:inline-block;width:8px;height:8px;border-radius:50%;vertical-align:middle}
+.dot-green{background:var(--green);box-shadow:0 0 0 2px rgba(31,212,122,.18) inset}
+.dot-red{background:var(--red);box-shadow:0 0 0 2px rgba(255,93,108,.18) inset}
+.dot-muted{background:rgba(255,255,255,.15)}
+.status-text-ok{color:var(--green);font-weight:700}
+.status-text-nf{color:var(--red);font-weight:700}
+.status-text-pending{color:var(--muted);font-weight:700}
+.empty-state{padding:28px;text-align:center;color:var(--muted);border:1px dashed rgba(83,166,255,.18);border-radius:14px;background:rgba(255,255,255,.02)}
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:linear-gradient(135deg,#0d1a2d,#091628);border:1px solid var(--border);border-radius:var(--radius);padding:24px;min-width:400px;max-width:600px;width:90%;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.modal h3{font-size:16px;font-weight:900;margin-bottom:14px}
+.modal textarea,.modal input:not([type=radio]):not([type=checkbox]),.modal select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);font:inherit;font-size:13px;outline:none;margin-bottom:10px}
+.modal textarea{min-height:120px;resize:vertical;font-family:ui-monospace,monospace;font-size:12px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+/* Export modal */
+.export-modal{min-width:480px;max-width:640px;padding:0;overflow:hidden;border:1px solid rgba(83,166,255,.2);background:linear-gradient(160deg,#0c1e38,#081428 40%,#060f1e)}
+.export-header{padding:20px 24px 16px;background:linear-gradient(135deg,rgba(111,70,255,.15),rgba(83,166,255,.1));border-bottom:1px solid rgba(83,166,255,.12)}
+.export-header h3{font-size:17px;font-weight:900;display:flex;align-items:center;gap:10px;margin:0}
+.export-header h3 .exp-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6f46ff,#955dff);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 16px rgba(111,70,255,.35)}
+.export-body{padding:20px 24px 24px}
+.export-section{margin-bottom:16px}
+.export-section .section-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--blue);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.export-section .section-title::before{content:'';width:3px;height:12px;border-radius:2px;background:linear-gradient(180deg,var(--blue),rgba(83,166,255,.3))}
+.radio-group,.check-group{display:flex;flex-wrap:wrap;gap:6px}
+.radio-opt,.check-opt{display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;border:1px solid rgba(83,166,255,.12);background:rgba(255,255,255,.02);cursor:pointer;transition:all .2s ease;user-select:none;font-size:12px;font-weight:700;color:var(--muted)}
+.radio-opt:hover,.check-opt:hover{background:rgba(255,255,255,.06);color:var(--text);border-color:rgba(83,166,255,.25);transform:translateY(-1px)}
+.radio-opt.selected{border-color:rgba(83,166,255,.5);background:linear-gradient(135deg,rgba(107,167,255,.18),rgba(107,167,255,.08));color:var(--white);box-shadow:0 2px 12px rgba(83,166,255,.12)}
+.check-opt.selected{border-color:rgba(31,212,122,.45);background:linear-gradient(135deg,rgba(31,212,122,.15),rgba(31,212,122,.05));color:var(--green);box-shadow:0 2px 12px rgba(31,212,122,.1)}
+.radio-opt input[type=radio],.check-opt input[type=checkbox]{accent-color:var(--blue);width:14px;height:14px;cursor:pointer;flex-shrink:0}
+.check-opt input[type=checkbox]{accent-color:var(--green)}
+.exp-filter-valid{color:#a6ffcb!important}.exp-filter-valid.selected{border-color:rgba(31,212,122,.5)!important;background:linear-gradient(135deg,rgba(31,212,122,.18),rgba(31,212,122,.06))!important;box-shadow:0 2px 12px rgba(31,212,122,.12)!important}
+.exp-filter-invalid{color:#ffb0bb!important}.exp-filter-invalid.selected{border-color:rgba(255,93,108,.45)!important;background:linear-gradient(135deg,rgba(255,93,108,.18),rgba(255,93,108,.06))!important;box-shadow:0 2px 12px rgba(255,93,108,.12)!important}
+.export-preview{margin-top:8px;padding:12px 16px;border-radius:12px;border:1px solid rgba(83,166,255,.1);background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,.15));font-size:11px;color:rgba(154,176,208,.85);font-weight:600;font-family:ui-monospace,'Cascadia Code',monospace;max-height:110px;overflow-y:auto;white-space:pre;line-height:1.6;scrollbar-width:thin;scrollbar-color:rgba(83,166,255,.2) transparent}
+.export-preview::-webkit-scrollbar{width:4px}.export-preview::-webkit-scrollbar-thumb{background:rgba(83,166,255,.25);border-radius:4px}
+.exp-count{font-size:11px;font-weight:700;margin-top:8px;padding:6px 12px;border-radius:8px;background:rgba(83,166,255,.06);border:1px solid rgba(83,166,255,.08);color:var(--muted);display:flex;align-items:center;gap:6px}
+.exp-count .count-num{color:var(--blue);font-weight:900;font-family:ui-monospace,monospace}
+.export-actions{display:flex;gap:10px;justify-content:flex-end;padding:16px 24px;border-top:1px solid rgba(83,166,255,.1);background:rgba(0,0,0,.12)}
+.export-actions .exp-cancel{padding:10px 20px;border-radius:10px;font-size:12px;font-weight:800;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--muted);transition:all .15s}
+.export-actions .exp-cancel:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.export-actions .exp-dl{padding:10px 24px;border-radius:10px;font-size:12px;font-weight:800;background:linear-gradient(135deg,#6f46ff,#955dff);color:#fff;border:none;box-shadow:0 4px 16px rgba(111,70,255,.3);transition:all .2s}
+.export-actions .exp-dl:hover{filter:brightness(1.15);transform:translateY(-1px);box-shadow:0 6px 20px rgba(111,70,255,.4)}
+@media(max-width:900px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<nav class="nav">
+<span class="brand">⚡ Dahaka</span>
+<a href="/config">⚙️ Config</a>
+<a href="/automation">🤖 Automation</a>
+<a href="/job">📊 Job</a>
+<a href="/email-lists" class="active">📋 Email Lists</a>
+</nav>
+<div class="wrap">
+<!-- Create -->
+<div class="card">
+<div class="card-hd"><h3>➕ Create New Email List</h3></div>
+<div class="create-row">
+<div class="fg"><label>List Name</label><input id="new-name" placeholder="My Email List"></div>
+<div class="fg"><label>Description (optional)</label><input id="new-desc" placeholder="Batch from May 2026"></div>
+<button class="success sm" onclick="createList()">➕ Create List</button>
+</div>
+</div>
+<!-- Lists container -->
+<div id="lists-container"><div class="empty-state">Loading...</div></div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal-overlay" id="import-modal">
+<div class="modal">
+<h3>📥 Import Emails</h3>
+<div class="fg"><label>Source</label>
+<select id="import-source" onchange="toggleImportSrc()">
+<option value="paste">Paste Emails</option>
+<option value="job">From Job Results</option>
+</select></div>
+<div id="imp-paste"><div class="fg"><label>Emails (one per line)</label><textarea id="import-emails" placeholder="test@gmail.com&#10;user@yahoo.com"></textarea></div></div>
+<div id="imp-job" style="display:none"><div class="fg"><label>Job ID</label><input id="import-job-id" placeholder="e.g. a1b2c3d4"></div></div>
+<div class="modal-actions">
+<button class="secondary sm" onclick="closeModal()">Cancel</button>
+<button class="success sm" onclick="doImport()">Import</button>
+</div>
+</div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal-overlay" id="export-modal">
+<div class="modal export-modal">
+<div class="export-header"><h3><span class="exp-icon">📤</span> Export Email List</h3></div>
+<div class="export-body">
+<div class="export-section"><div class="section-title">Emails to Export</div>
+<div class="radio-group" id="exp-filter">
+<label class="radio-opt selected"><input type="radio" name="exp-filter" value="all" checked> All Emails</label>
+<label class="radio-opt exp-filter-valid"><input type="radio" name="exp-filter" value="valid"> ✓ Valid Only</label>
+<label class="radio-opt exp-filter-invalid"><input type="radio" name="exp-filter" value="invalid"> ✗ Invalid Only</label>
+</div></div>
+<div class="export-section"><div class="section-title">Format</div>
+<div class="radio-group" id="exp-format">
+<label class="radio-opt selected"><input type="radio" name="exp-format" value="email_only" checked> Email Only</label>
+<label class="radio-opt"><input type="radio" name="exp-format" value="pipe"> Pipe Format (email|domain|…)</label>
+</div></div>
+<div class="export-section" id="exp-domains-section"><div class="section-title">Domains to Include</div>
+<div class="check-group" id="exp-domains"></div></div>
+<div class="export-section"><div class="section-title">Preview</div>
+<div class="export-preview" id="exp-preview">Select options above...</div>
+<div class="exp-count" id="exp-count"></div></div>
+</div>
+<div class="export-actions">
+<button class="exp-cancel" onclick="closeExportModal()">Cancel</button>
+<button class="exp-dl" onclick="doExport()">📤 Download File</button>
+</div>
+</div>
+</div>
+
+<script>
+let openListId=null,importListId=null,listEntries={},listDomains={},listSorts={},listFilters={},listPages={},listPerPage={},exportListId=null,exportListData=null;
+
+function esc(v){if(v==null)return'';return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+async function loadLists(){
+  const r=await fetch('/api/email-lists');const lists=await r.json();
+  const c=document.getElementById('lists-container');
+  if(!lists.length){c.innerHTML='<div class="empty-state">No email lists yet. Create one above.</div>';return}
+  c.innerHTML=lists.map(l=>renderCard(l)).join('');
+  // If a list was open, re-open its table
+  if(openListId){const sec=document.getElementById('table-'+openListId);if(sec)sec.classList.add('open')}
+}
+
+function renderCard(l){
+  const doms=l.domain_names||[];
+  const isOpen=openListId===l.id;
+  return`<div class="card" id="card-${l.id}">
+    <div class="card-hd"><h3>📋 ${esc(l.name)}</h3><span class="badge">#${l.id}</span></div>
+    ${l.description?`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">${esc(l.description)}</div>`:''}
+    <div class="stats-grid">
+      <div class="stat-box"><div class="stat-label">Total Emails</div><div class="stat-value v-blue">${l.total_emails}</div></div>
+      <div class="stat-box"><div class="stat-label">Valid</div><div class="stat-value v-green">${l.valid}</div></div>
+      <div class="stat-box"><div class="stat-label">Invalid</div><div class="stat-value v-red">${l.invalid}</div></div>
+      <div class="stat-box"><div class="stat-label">Unchecked</div><div class="stat-value v-yellow">${l.unchecked}</div></div>
+      <div class="stat-box"><div class="stat-label">Domains</div><div class="stat-value v-white">${l.total_domains}</div></div>
+    </div>
+    <div class="progress-track"><div class="progress-bar" style="width:${l.progress}%"></div></div>
+    <div class="progress-meta"><span>Checked: ${l.checked} / ${l.total_cells}</span><span>${l.progress}%</span></div>
+    <div class="dom-pills">${doms.length?doms.map(d=>`<span class="dom-pill">${esc(d)}</span>`).join(''):'<span style="font-size:10px;color:var(--muted)">No domains</span>'}</div>
+    <div class="actions">
+      <button class="${isOpen?'danger':'primary'} sm" onclick="toggleTable(${l.id})">${isOpen?'✕ Hide List':'📋 Show List'}</button>
+      <button class="secondary sm" onclick="openImport(${l.id})">📥 Import</button>
+      <button class="accent sm" onclick="openExport(${l.id})">📤 Export</button>
+      <button class="danger sm" onclick="deleteList(${l.id},'${esc(l.name)}')">🗑 Delete</button>
+    </div>
+    <div class="table-section ${isOpen?'open':''}" id="table-${l.id}">
+      <div id="table-content-${l.id}"><div class="empty-state">Loading emails...</div></div>
+    </div>
+    <div class="lc-time">Created: ${l.created_at||'—'} · Updated: ${l.updated_at||'—'}</div>
+  </div>`
+}
+
+async function toggleTable(id){
+  if(openListId===id){openListId=null;loadLists();return}
+  openListId=id;
+  listSorts[id]=listSorts[id]||{key:null,dir:'asc'};
+  listFilters[id]=listFilters[id]||'all';
+  loadLists();
+  await loadTableData(id);
+}
+
+async function loadTableData(id){
+  const r=await fetch(`/api/email-lists/${id}/entries`);const data=await r.json();
+  listEntries[id]=data.entries||[];listDomains[id]=data.domains||[];
+  renderEmailTable(id);
+}
+
+function getFiltered(id){
+  let rows=[...(listEntries[id]||[])];const doms=listDomains[id]||[];const f=listFilters[id]||'all';
+  if(f==='valid')rows=rows.filter(e=>{const dr=e.domain_results||{};return doms.some(d=>dr[String(d.id)]==='1')});
+  else if(f==='invalid')rows=rows.filter(e=>{const dr=e.domain_results||{};return doms.some(d=>dr[String(d.id)]==='0')});
+  else if(f==='unchecked')rows=rows.filter(e=>{const dr=e.domain_results||{};return doms.some(d=>{const v=dr[String(d.id)]||'';return v===''})});
+  const s=listSorts[id]||{};
+  if(s.key){
+    rows.sort((a,b)=>{if(s.key==='email')return a.email.localeCompare(b.email);const av=(a.domain_results||{})[s.key]||'',bv=(b.domain_results||{})[s.key]||'';return av.localeCompare(bv)});
+    if(s.dir==='desc')rows.reverse();
+  }
+  return rows;
+}
+
+function renderEmailTable(id){
+  const wrap=document.getElementById('table-content-'+id);if(!wrap)return;
+  const doms=listDomains[id]||[];const allRows=getFiltered(id);const s=listSorts[id]||{};const f=listFilters[id]||'all';
+  // Pagination
+  const perPage=listPerPage[id]||250;
+  const totalPages=Math.max(1,Math.ceil(allRows.length/perPage));
+  if(!listPages[id]||listPages[id]<1)listPages[id]=1;
+  if(listPages[id]>totalPages)listPages[id]=totalPages;
+  const page=listPages[id];
+  const startIdx=(page-1)*perPage;
+  const rows=allRows.slice(startIdx,startIdx+perPage);
+  const arrow=k=>s.key===k?(s.dir==='asc'?' ↑':' ↓'):'';
+  const fpill=(label,val)=>`<span class="filter-pill ${f===val?'active':''}" onclick="setFilter(${id},'${val}')">${label}</span>`;
+  const ppOpt=v=>`<option value="${v}"${perPage===v?' selected':''}>${v}</option>`;
+  let html=`<div class="results-header"><div style="font-size:13px;font-weight:800;color:var(--muted)">Showing ${startIdx+1}–${Math.min(startIdx+perPage,allRows.length)} of ${allRows.length} emails (${(listEntries[id]||[]).length} total)</div>
+    <div class="filter-bar"><span>Filter</span>${fpill('All','all')}${fpill('✓ Valid','valid')}${fpill('✗ Invalid','invalid')}${fpill('— Unchecked','unchecked')}
+    <span style="margin-left:8px">Per page</span><select class="pg-select" onchange="setPerPage(${id},+this.value)">${ppOpt(250)}${ppOpt(500)}${ppOpt(1000)}${ppOpt(5000)}</select></div></div>`;
+  if(!allRows.length){html+='<div class="empty-state">No emails match the current filter.</div>';wrap.innerHTML=html;return}
+  html+=`<div class="table-wrap"><table><thead><tr>
+    <th style="width:40px">#</th>
+    <th style="width:220px;text-align:left;cursor:pointer" onclick="sortCol(${id},'email')">Email${arrow('email')}</th>`;
+  doms.forEach(d=>{html+=`<th style="min-width:90px;cursor:pointer" onclick="sortCol(${id},'${d.id}')">${esc(d.name)}${arrow(String(d.id))}</th>`});
+  html+=`<th style="min-width:140px">Pipe Format</th></tr></thead><tbody>`;
+  rows.forEach((e,i)=>{
+    const dr=e.domain_results||{};let pv=[];
+    const rowNum=startIdx+i+1;
+    html+=`<tr><td style="color:var(--muted);font-size:11px">${rowNum}</td><td class="email-cell cell-expand">${esc(e.email)}</td>`;
+    doms.forEach(d=>{
+      const v=dr[String(d.id)]||'';pv.push(v);
+      if(v==='1')html+=`<td><span class="tiny-dot dot-green"></span>&nbsp;<span class="status-text-ok">1</span></td>`;
+      else if(v==='0')html+=`<td><span class="tiny-dot dot-red"></span>&nbsp;<span class="status-text-nf">0</span></td>`;
+      else html+=`<td><span class="tiny-dot dot-muted"></span>&nbsp;<span class="status-text-pending">—</span></td>`;
+    });
+    html+=`<td class="cell-expand" style="font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);text-align:left">${esc(e.email)}|${pv.join('|')}</td></tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  // Pagination controls
+  if(totalPages>1){
+    html+=`<div class="pagination"><div class="pg-info">Page ${page} of ${totalPages}</div><div class="pg-controls">`;
+    html+=`<span class="pg-btn ${page<=1?'pg-disabled':''}" onclick="goPage(${id},1)">⟨⟨</span>`;
+    html+=`<span class="pg-btn ${page<=1?'pg-disabled':''}" onclick="goPage(${id},${page-1})">⟨ Prev</span>`;
+    // Show page number buttons (up to 7 around current)
+    let pStart=Math.max(1,page-3),pEnd=Math.min(totalPages,page+3);
+    if(pStart>1)html+=`<span class="pg-btn" onclick="goPage(${id},1)">1</span>`;
+    if(pStart>2)html+=`<span style="color:var(--muted);font-size:11px;padding:0 4px">…</span>`;
+    for(let p=pStart;p<=pEnd;p++)html+=`<span class="pg-btn ${p===page?'pg-active':''}" onclick="goPage(${id},${p})">${p}</span>`;
+    if(pEnd<totalPages-1)html+=`<span style="color:var(--muted);font-size:11px;padding:0 4px">…</span>`;
+    if(pEnd<totalPages)html+=`<span class="pg-btn" onclick="goPage(${id},${totalPages})">${totalPages}</span>`;
+    html+=`<span class="pg-btn ${page>=totalPages?'pg-disabled':''}" onclick="goPage(${id},${page+1})">Next ⟩</span>`;
+    html+=`<span class="pg-btn ${page>=totalPages?'pg-disabled':''}" onclick="goPage(${id},${totalPages})">⟩⟩</span>`;
+    html+=`</div></div>`;
+  }
+  wrap.innerHTML=html;
+  // cell-expand click handler
+  wrap.querySelectorAll('.cell-expand').forEach(td=>{td.addEventListener('click',()=>td.classList.toggle('expanded-cell'))});
+}
+
+function sortCol(id,key){
+  const s=listSorts[id]||(listSorts[id]={key:null,dir:'asc'});
+  if(s.key===String(key))s.dir=s.dir==='asc'?'desc':'asc';
+  else{s.key=String(key);s.dir='asc'}
+  renderEmailTable(id);
+}
+function setFilter(id,val){listFilters[id]=val;listPages[id]=1;renderEmailTable(id)}
+function setPerPage(id,val){listPerPage[id]=val;listPages[id]=1;renderEmailTable(id)}
+function goPage(id,p){listPages[id]=p;renderEmailTable(id);const sec=document.getElementById('table-'+id);if(sec)sec.scrollIntoView({behavior:'smooth',block:'start'})}
+
+async function createList(){
+  const name=document.getElementById('new-name').value.trim();
+  if(!name){alert('Enter a list name');return}
+  const desc=document.getElementById('new-desc').value.trim();
+  await fetch('/api/email-lists',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,description:desc})});
+  document.getElementById('new-name').value='';document.getElementById('new-desc').value='';
+  loadLists();
+}
+
+async function deleteList(id,name){
+  if(!confirm(`Delete list "${name}"? This cannot be undone.`))return;
+  if(openListId===id)openListId=null;
+  await fetch(`/api/email-lists/${id}`,{method:'DELETE'});loadLists();
+}
+
+// Import
+function openImport(id){importListId=id;document.getElementById('import-modal').classList.add('show')}
+function closeModal(){document.getElementById('import-modal').classList.remove('show')}
+function closeExportModal(){document.getElementById('export-modal').classList.remove('show')}
+
+async function openExport(id){
+  exportListId=id;
+  // Load entries if not already loaded
+  if(!listEntries[id]||!listDomains[id]){
+    const r=await fetch(`/api/email-lists/${id}/entries`);const data=await r.json();
+    listEntries[id]=data.entries||[];listDomains[id]=data.domains||[];
+  }
+  // Populate domain checkboxes
+  const doms=listDomains[id]||[];
+  const dc=document.getElementById('exp-domains');
+  dc.innerHTML=doms.map(d=>`<label class="check-opt selected"><input type="checkbox" value="${d.id}" checked onchange="updateExportPreview()"> ${esc(d.name)}</label>`).join('');
+  // Style radio buttons
+  document.querySelectorAll('#export-modal .radio-opt').forEach(l=>{
+    const r=l.querySelector('input[type=radio]');if(r)l.classList.toggle('selected',r.checked);
+  });
+  document.querySelectorAll('#export-modal .radio-opt input[type=radio]').forEach(r=>{
+    r.onchange=()=>{
+      r.closest('.radio-group').querySelectorAll('.radio-opt').forEach(l=>l.classList.remove('selected'));
+      r.closest('.radio-opt').classList.add('selected');
+      updateExportPreview();
+    };
+  });
+  document.querySelectorAll('#export-modal .check-opt input[type=checkbox]').forEach(cb=>{
+    cb.onchange=()=>{cb.closest('.check-opt').classList.toggle('selected',cb.checked);updateExportPreview();};
+  });
+  updateExportPreview();
+  document.getElementById('export-modal').classList.add('show');
+}
+
+function getExportData(){
+  const id=exportListId;if(!id)return{lines:[],count:0};
+  const entries=listEntries[id]||[];
+  const doms=listDomains[id]||[];
+  const filter=document.querySelector('input[name=exp-filter]:checked')?.value||'all';
+  const format=document.querySelector('input[name=exp-format]:checked')?.value||'email_only';
+  // Get selected domain IDs
+  const selDomIds=[];
+  document.querySelectorAll('#exp-domains input[type=checkbox]:checked').forEach(cb=>selDomIds.push(String(cb.value)));
+  const selDoms=doms.filter(d=>selDomIds.includes(String(d.id)));
+  // Filter entries
+  let filtered=entries;
+  if(filter==='valid'){
+    filtered=entries.filter(e=>{
+      const dr=e.domain_results||{};
+      return selDoms.some(d=>dr[String(d.id)]==='1');
+    });
+  } else if(filter==='invalid'){
+    filtered=entries.filter(e=>{
+      const dr=e.domain_results||{};
+      return selDoms.some(d=>dr[String(d.id)]==='0');
+    });
+  }
+  // Build output lines
+  const lines=[];
+  if(format==='pipe'&&selDoms.length>0){
+    lines.push('email|'+selDoms.map(d=>d.name).join('|'));
+    filtered.forEach(e=>{
+      const dr=e.domain_results||{};
+      const parts=[e.email];
+      selDoms.forEach(d=>parts.push(dr[String(d.id)]||''));
+      lines.push(parts.join('|'));
+    });
+  } else {
+    filtered.forEach(e=>lines.push(e.email));
+  }
+  return{lines,count:filtered.length,total:entries.length};
+}
+
+function updateExportPreview(){
+  const format=document.querySelector('input[name=exp-format]:checked')?.value||'email_only';
+  const{lines,count,total}=getExportData();
+  const preview=document.getElementById('exp-preview');
+  if(!lines.length){preview.textContent='No emails match the selected filter.';}
+  else{
+    const show=lines.slice(0,6);
+    let txt=show.join('\n');
+    if(lines.length>6)txt+='\n... ('+(lines.length-6)+' more)';
+    preview.textContent=txt;
+  }
+  document.getElementById('exp-count').innerHTML=`<span class="count-num">${count}</span> email(s) will be exported out of <span class="count-num">${total}</span> total`;
+}
+
+function doExport(){
+  const{lines,count}=getExportData();
+  if(!lines.length||count===0){alert('No emails to export with the selected filter.');return;}
+  const content=lines.join('\n');
+  const blob=new Blob([content],{type:'text/plain'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const filter=document.querySelector('input[name=exp-filter]:checked')?.value||'all';
+  const format=document.querySelector('input[name=exp-format]:checked')?.value||'email_only';
+  const suffix=filter!=='all'?'_'+filter:'';
+  const fmtTag=format==='pipe'?'_pipe':'';
+  a.href=url;a.download=`email_list_${exportListId}${suffix}${fmtTag}.txt`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  closeExportModal();
+}
+function toggleImportSrc(){
+  const s=document.getElementById('import-source').value;
+  document.getElementById('imp-paste').style.display=s==='paste'?'':'none';
+  document.getElementById('imp-job').style.display=s==='job'?'':'none';
+}
+async function doImport(){
+  if(!importListId){alert('No list selected');return}
+  const source=document.getElementById('import-source').value;
+  let body={source};
+  if(source==='paste')body.emails=document.getElementById('import-emails').value;
+  else body.job_id=document.getElementById('import-job-id').value;
+  const r=await fetch(`/api/email-lists/${importListId}/import`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json();
+  if(!r.ok){alert(d.error||'Import failed');return}
+  alert(`Imported: ${d.added||d.imported||0} email(s)`);
+  closeModal();document.getElementById('import-emails').value='';document.getElementById('import-job-id').value='';
+  if(openListId===importListId)await loadTableData(importListId);
+  loadLists();
+}
+
+loadLists();
+</script>
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dahaka — Email Checker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{--bg:#081120;--bg2:#0b1730;--card:rgba(255,255,255,.08);--border:rgba(145,164,201,.18);--text:#e6edf7;--muted:#9ca9c4;--accent:#7394e6;--good:#35e49a;--bad:#ff5e73;--warn:#ffc14d;--radius:16px;--shadow:0 20px 55px rgba(0,0,0,.35)}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at top left,rgba(115,148,230,.14),transparent 34%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);min-height:100vh;padding:24px}
+    .wrap{max-width:1400px;margin:0 auto}
+    /* Header */
+    .hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px}
+    .hdr h1{font-size:22px;font-weight:900;letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
+    .hdr h1 span.logo{font-size:28px}
+    .turbo-badge{display:none;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(255,94,115,.18);border:1px solid rgba(255,94,115,.4);color:#ff8a9e;animation:pulse 2s infinite}
+    .turbo-badge.show{display:inline-flex}
+    @keyframes pulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
+    /* Controls row */
+    .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:20px;padding:14px 18px;border-radius:var(--radius);border:1px solid var(--border);background:var(--card);backdrop-filter:blur(12px)}
+    .btn{border:1px solid rgba(255,255,255,.14);background:rgba(122,167,255,.14);color:rgba(255,255,255,.92);padding:10px 18px;border-radius:14px;cursor:pointer;font:inherit;font-weight:800;font-size:13px;display:inline-flex;align-items:center;gap:8px;transition:all .2s}
+    .btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+    .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .btn.start{background:linear-gradient(135deg,rgba(53,228,154,.22),rgba(67,211,255,.18));border-color:rgba(53,228,154,.4);color:#b4ffd8;min-width:160px;justify-content:center}
+    .btn.start.running{background:rgba(255,193,77,.14);border-color:rgba(255,193,77,.35);color:#fde68a}
+    .toggle-group{display:flex;align-items:center;gap:0;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-left:auto}
+    .toggle-opt{padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.03);color:var(--muted);transition:all .18s;border:none;font-family:inherit;border-right:1px solid var(--border)}
+    .toggle-opt:last-child{border-right:none}
+    .toggle-opt.active{background:rgba(107,167,255,.18);color:#fff;font-weight:800}
+    .toggle-opt:hover:not(.active){background:rgba(255,255,255,.06);color:var(--text)}
+    /* Progress */
+    .prog-wrap{margin-bottom:20px;padding:14px 18px;border-radius:var(--radius);border:1px solid var(--border);background:var(--card)}
+    .prog-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+    .prog-bar{height:10px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;position:relative;box-shadow:inset 0 1px 3px rgba(0,0,0,.3)}
+    .prog-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#35e49a,#43d3ff,#a78bfa);transition:width .7s cubic-bezier(.4,0,.2,1);min-width:0;position:relative;box-shadow:0 0 16px rgba(67,211,255,.35)}
+    .prog-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);animation:shimmer 2s infinite}
+    @keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(200%)}}
+    .prog-pct{font-size:13px;font-weight:950;color:#43d3ff;font-family:ui-monospace,monospace}
+    /* Stats grid */
+    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+    .stat{text-align:center;padding:16px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--card);backdrop-filter:blur(8px);transition:border-color .2s,box-shadow .2s}
+    .stat:hover{border-color:rgba(67,211,255,.25);box-shadow:0 4px 16px rgba(0,0,0,.2)}
+    .stat .k{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:800}
+    .stat .v{font-size:24px;font-weight:950;margin-top:4px;font-family:ui-monospace,monospace}
+    .v.good{color:var(--good)}.v.bad{color:var(--bad)}.v.warn{color:var(--warn)}.v.cyan{color:#43d3ff}.v.blue{color:var(--accent)}
+    /* Cards grid */
+    .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+    .card{border-radius:var(--radius);border:1px solid var(--border);background:linear-gradient(135deg,rgba(11,23,48,.96),rgba(8,17,32,.98));box-shadow:var(--shadow);overflow:hidden}
+    .card-hd{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(107,167,255,.08),rgba(53,228,154,.04))}
+    .card-hd .ico{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:rgba(107,167,255,.15);border:1px solid rgba(107,167,255,.3);font-size:14px;flex-shrink:0}
+    .card-hd h3{font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.3px}
+    .card-hd .badge{margin-left:auto;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(67,211,255,.12);border:1px solid rgba(67,211,255,.3);color:#b8ecff}
+    .card-bd{padding:14px 16px;max-height:350px;overflow-y:auto}
+    .card-bd::-webkit-scrollbar{width:4px}.card-bd::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:4px}
+    /* Proxy items */
+    .px-item{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;margin-bottom:4px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid transparent;transition:all .15s}
+    .px-item.active{background:rgba(53,228,154,.08);border-color:rgba(53,228,154,.2);color:#b4ffd8}
+    .px-item.failed{background:rgba(255,94,115,.08);border-color:rgba(255,94,115,.2);color:#ffb0bb}
+    .px-item.available{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.08);color:var(--muted)}
+    .px-item.retrying{background:rgba(255,193,77,.08);border-color:rgba(255,193,77,.2);color:#fde68a}
+    .px-item.checking{background:rgba(67,211,255,.08);border-color:rgba(67,211,255,.25);color:#a3e4ff;animation:checkPulse 1.4s ease-in-out infinite}
+    @keyframes checkPulse{0%,100%{opacity:1;border-color:rgba(67,211,255,.25)}50%{opacity:.7;border-color:rgba(67,211,255,.5)}}
+    .px-item .retries{font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.06)}
+    /* Email items */
+    .em-item{padding:7px 10px;margin-bottom:4px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02)}
+    .em-item.status-present{border-color:rgba(53,228,154,.25);color:#b4ffd8}
+    .em-item.status-failure{border-color:rgba(255,94,115,.25);color:#ffb0bb}
+    .em-item.status-retrying{border-color:rgba(255,193,77,.25);color:#fde68a}
+    /* Bottom row: charts + log + config */
+    .bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+    .chart-wrap{position:relative;max-height:220px;display:flex;justify-content:center;padding-top:10px}
+    /* Log panel */
+    .log-item{padding:4px 0;font-size:11px;font-family:ui-monospace,monospace;color:rgba(255,255,255,.7);border-bottom:1px solid rgba(255,255,255,.04);display:flex;gap:8px}
+    .log-item .ts{color:var(--muted);flex-shrink:0;font-weight:700}
+    .log-item.good .msg{color:var(--good)}.log-item.bad .msg{color:var(--bad)}.log-item.warn .msg{color:var(--warn)}
+    /* Config */
+    .cfg-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid rgba(255,255,255,.04)}
+    .cfg-row .ck{color:var(--muted);font-weight:700}.cfg-row .cv{font-family:ui-monospace,monospace;color:var(--text);font-weight:600}
+    /* Rates row */
+    .rates{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+    .rate{text-align:center;padding:12px 8px;border-radius:12px;border:1px solid var(--border);background:var(--card)}
+    .rate .k{font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:800}
+    .rate .v{font-size:16px;font-weight:900;margin-top:3px;color:rgba(255,255,255,.8);font-family:ui-monospace,monospace}
+    /* Browser threads */
+    .threads{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
+    .th-dot{padding:6px;border-radius:8px;font-size:9px;font-weight:800;text-align:center;text-transform:uppercase;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.2);color:var(--muted)}
+    .th-dot.working{border-color:rgba(53,228,154,.3);background:rgba(53,228,154,.08);color:var(--good)}
+    .th-dot.idle{border-color:rgba(107,167,255,.2);background:rgba(107,167,255,.06);color:var(--accent)}
+    @media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr)}.bottom{grid-template-columns:1fr}.cards{grid-template-columns:1fr}}
+    @media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}.rates{grid-template-columns:repeat(2,1fr)}.threads{grid-template-columns:repeat(3,1fr)}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <!-- Header -->
+  <div class="hdr">
+    <h1><span class="logo">⚡</span> Dahaka <span style="color:var(--muted);font-weight:600;font-size:14px">Email Checker</span></h1>
+    <span id="turbo-badge" class="turbo-badge">🔥 TURBO MODE</span>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button id="start-btn" class="btn start" onclick="startCheck()">▶ Start Check</button>
+    <span style="font-size:11px;color:var(--muted);font-weight:700">STATUS: <span id="status-text" style="color:#43d3ff">IDLE</span></span>
+    <span style="font-size:11px;color:var(--muted);font-weight:700;margin-left:8px">UPTIME: <span id="uptime" style="color:var(--text)">00:00:00</span></span>
+    <span style="font-size:11px;color:var(--muted);font-weight:700;margin-left:8px">ETA: <span id="eta" style="color:var(--warn)">—</span></span>
+    <div class="toggle-group">
+      <button id="mode-local" class="toggle-opt active" onclick="setProxyMode('local_file')">📁 Local File</button>
+      <button id="mode-rotated" class="toggle-opt" onclick="setProxyMode('rotated')">🔄 Rotated</button>
+      <button id="mode-noproxy" class="toggle-opt" onclick="setProxyMode('no_proxy')">🚫 No Proxy</button>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="prog-wrap">
+    <div class="prog-label"><span>PROGRESS — <span id="processed">0</span> / <span id="total">0</span> emails</span><span class="prog-pct" id="prog-pct">0.0%</span></div>
+    <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat"><div class="k">Total Emails</div><div class="v cyan" id="s-total">0</div></div>
+    <div class="stat"><div class="k">Valid</div><div class="v good" id="s-valid">0</div></div>
+    <div class="stat"><div class="k">Invalid</div><div class="v bad" id="s-invalid">0</div></div>
+    <div class="stat"><div class="k">Proxies Active</div><div class="v good" id="s-px-active">0</div></div>
+    <div class="stat"><div class="k">Proxies Failed</div><div class="v bad" id="s-px-failed">0</div></div>
+  </div>
+
+  <!-- Rates -->
+  <div class="rates">
+    <div class="rate"><div class="k">Per Hour</div><div class="v" id="r-hour">0</div></div>
+    <div class="rate"><div class="k">Per Day</div><div class="v" id="r-day">0</div></div>
+    <div class="rate"><div class="k">Per Week</div><div class="v" id="r-week">0</div></div>
+    <div class="rate"><div class="k">Per Month</div><div class="v" id="r-month">0</div></div>
+  </div>
+
+  <!-- Cards: Proxy List + Current Activity -->
+  <div class="cards">
+    <div class="card">
+      <div class="card-hd"><span class="ico">🌐</span><h3>Proxy List</h3><span class="badge" id="px-count">0</span></div>
+      <div class="card-bd" id="proxy-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><span class="ico">📧</span><h3>Current Activity</h3><span class="badge" id="em-count">0</span></div>
+      <div class="card-bd" id="email-list"></div>
+    </div>
+  </div>
+
+  <!-- Bottom: Charts + Log + Config -->
+  <div class="bottom">
+    <div class="card">
+      <div class="card-hd"><span class="ico">📊</span><h3>Email Results</h3></div>
+      <div class="card-bd"><div class="chart-wrap"><canvas id="emailChart"></canvas></div></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><span class="ico">📋</span><h3>Live Monitor</h3></div>
+      <div class="card-bd" id="log-panel" style="font-size:11px">
+        <div class="threads" id="thread-grid"></div>
+        <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px" id="log-list"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><span class="ico">⚙️</span><h3>Config</h3></div>
+      <div class="card-bd" id="config-panel"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const socket = io();
+
+// Charts
+Chart.defaults.color = 'rgba(255,255,255,.6)';
+const emailChart = new Chart(document.getElementById('emailChart').getContext('2d'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Valid', 'Invalid', 'Pending'],
+    datasets: [{data:[0,0,0], backgroundColor:['rgba(53,228,154,.7)','rgba(255,94,115,.7)','rgba(255,255,255,.1)'], borderColor:['rgba(53,228,154,1)','rgba(255,94,115,1)','rgba(255,255,255,.2)'], borderWidth:1}]
+  },
+  options: {responsive:true, maintainAspectRatio:true, plugins:{legend:{position:'bottom',labels:{padding:12,boxWidth:10,font:{size:11,weight:700}}}}}
+});
+
+function startCheck(){
+  const btn = document.getElementById('start-btn');
+  if(btn.disabled) return;
+  socket.emit('start_check', {});
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Starting...';
+  btn.classList.add('running');
+}
+
+function setProxyMode(mode){
+  socket.emit('set_proxy_mode', {mode});
+  document.getElementById('mode-local').classList.toggle('active', mode==='local_file');
+  document.getElementById('mode-rotated').classList.toggle('active', mode==='rotated');
+  document.getElementById('mode-noproxy').classList.toggle('active', mode==='no_proxy');
+}
+
+socket.on('check_started', ()=>{
+  const btn = document.getElementById('start-btn');
+  btn.innerHTML = '⏳ Running...';
+  btn.disabled = true;
+  btn.classList.add('running');
+});
+
+socket.on('check_finished', ()=>{
+  const btn = document.getElementById('start-btn');
+  btn.innerHTML = '▶ Start Check';
+  btn.disabled = false;
+  btn.classList.remove('running');
+});
+
+socket.on('proxy_mode_changed', (d)=>{
+  document.getElementById('mode-local').classList.toggle('active', d.mode==='local_file');
+  document.getElementById('mode-rotated').classList.toggle('active', d.mode==='rotated');
+  document.getElementById('mode-noproxy').classList.toggle('active', d.mode==='no_proxy');
+});
+
+socket.on('update', function(d){
+  // Turbo badge
+  const tb = document.getElementById('turbo-badge');
+  tb.classList.toggle('show', !!d.in_turbo_mode);
+
+  // Status
+  const st = document.getElementById('status-text');
+  st.innerText = d.status.toUpperCase();
+  st.style.color = d.status==='running'?'var(--good)':d.status==='finished'?'#43d3ff':'var(--muted)';
+
+  // Button state
+  const btn = document.getElementById('start-btn');
+  if(d.status==='running'){btn.disabled=true;btn.innerHTML='⏳ Running...';btn.classList.add('running')}
+  else{btn.disabled=false;btn.innerHTML='▶ Start Check';btn.classList.remove('running')}
+
+  // Uptime
+  let ts=Math.floor(d.uptime),h=Math.floor(ts/3600),m=Math.floor((ts%3600)/60),s=ts%60;
+  const pad=n=>n<10?'0'+n:n;
+  document.getElementById('uptime').innerText=`${pad(h)}:${pad(m)}:${pad(s)}`;
+
+  // Progress
+  const pct = d.total_emails>0 ? (d.processed/d.total_emails*100) : 0;
+  document.getElementById('processed').innerText=d.processed;
+  document.getElementById('total').innerText=d.total_emails;
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-pct').innerText=pct.toFixed(1)+'%';
+
+  // Stats
+  document.getElementById('s-total').innerText=d.total_emails;
+  document.getElementById('s-valid').innerText=d.success;
+  document.getElementById('s-invalid').innerText=d.failure;
+  document.getElementById('s-px-active').innerText=d.proxies.active||0;
+  document.getElementById('s-px-failed').innerText=d.proxies.failed||0;
+
+  // Rates
+  const eps = d.uptime>0 ? d.processed/d.uptime : 0;
+  document.getElementById('r-hour').innerText=Math.round(eps*3600);
+  document.getElementById('r-day').innerText=Math.round(eps*86400);
+  document.getElementById('r-week').innerText=Math.round(eps*604800);
+  document.getElementById('r-month').innerText=Math.round(eps*2592000);
+
+  // ETA
+  const rem = d.total_emails - d.processed;
+  if(eps>0){const sl=rem/eps;const eh=Math.floor(sl/3600);const em=Math.floor((sl%3600)/60);document.getElementById('eta').innerText=`${eh}h ${em}m`}
+  else{document.getElementById('eta').innerText='—'}
+
+  // Chart
+  emailChart.data.datasets[0].data=[d.success,d.failure,d.total_emails-d.processed];
+  emailChart.update();
+
+  // Proxy list
+  const pl=document.getElementById('proxy-list');
+  const pxStatusLabel=s=>s==='checking'?'CHECKING..':s.toUpperCase();
+  pl.innerHTML=(d.proxies_list||[]).map(p=>`<div class="px-item ${p.status}"><span>${p.proxy} — ${pxStatusLabel(p.status)}</span><span class="retries">${p.retries||0}</span></div>`).join('');
+  document.getElementById('px-count').innerText=(d.proxies_list||[]).length;
+
+  // Email list
+  const el=document.getElementById('email-list');
+  el.innerHTML=(d.current_emails||[]).map(e=>{
+    let cls=e.status==='Present'?'status-present':e.status==='Not Present'?'status-failure':e.status==='Retrying'?'status-retrying':'';
+    return `<div class="em-item ${cls}">${e.email}: ${e.status}</div>`;
+  }).join('');
+  document.getElementById('em-count').innerText=(d.current_emails||[]).length;
+
+  // Browser threads
+  const tg=document.getElementById('thread-grid');
+  const bt=d.browser_threads||{};
+  tg.innerHTML=Object.entries(bt).map(([id,st])=>{
+    let cls=st.startsWith('checking')?'working':st==='idle'?'idle':'';
+    let label=st.startsWith('checking')?'⚡'+id.replace('browser-','B'):'💤'+id.replace('browser-','B');
+    return `<div class="th-dot ${cls}">${label}</div>`;
+  }).join('');
+
+  // Log
+  const ll=document.getElementById('log-list');
+  ll.innerHTML=(d.log_entries||[]).slice(-20).reverse().map(l=>`<div class="log-item ${l.level}"><span class="ts">${l.timestamp}</span><span class="msg">${l.message}</span></div>`).join('');
+
+  // Config
+  const cp=document.getElementById('config-panel');
+  cp.innerHTML=Object.entries(d.config||{}).map(([k,v])=>`<div class="cfg-row"><span class="ck">${k}</span><span class="cv">${v}</span></div>`).join('');
+
+  // Proxy mode sync
+  if(d.proxy_mode){
+    document.getElementById('mode-local').classList.toggle('active',d.proxy_mode==='local_file');
+    document.getElementById('mode-rotated').classList.toggle('active',d.proxy_mode==='rotated');
+    document.getElementById('mode-noproxy').classList.toggle('active',d.proxy_mode==='no_proxy');
+  }
+});
+</script>
+</body>
+</html>

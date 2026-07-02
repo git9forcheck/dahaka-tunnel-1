@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dahaka — Automation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <style>
+    :root{--bg:#081120;--bg2:#0b1730;--card:rgba(255,255,255,.08);--border:rgba(145,164,201,.18);--text:#e6edf7;--muted:#9ca9c4;--accent:#7394e6;--good:#35e49a;--bad:#ff5e73;--warn:#ffc14d;--radius:16px}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at top left,rgba(115,148,230,.14),transparent 34%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);min-height:100vh;padding-top:64px}
+    .nav{position:fixed;top:0;left:0;right:0;z-index:999;display:flex;align-items:center;gap:8px;padding:12px 18px;background:rgba(6,12,24,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+    .nav .brand{font-weight:900;font-size:16px;margin-right:12px;display:flex;align-items:center;gap:8px}
+    .nav a{padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;color:var(--muted);text-decoration:none;border:1px solid transparent;transition:all .15s}
+    .nav a:hover{color:var(--text);background:rgba(255,255,255,.04)}
+    .nav a.active{background:rgba(107,167,255,.18);border-color:rgba(141,165,241,.5);color:#fff;font-weight:800}
+    .wrap{max-width:1100px;margin:0 auto;padding:24px 18px}
+    h2{font-size:20px;font-weight:900;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+    .card{border-radius:var(--radius);border:1px solid var(--border);background:linear-gradient(135deg,rgba(11,23,48,.96),rgba(8,17,32,.98));overflow:hidden;margin-bottom:20px}
+    .card-hd{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(107,167,255,.08),rgba(53,228,154,.04))}
+    .card-hd h3{font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.3px}
+    .card-hd .ico{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(107,167,255,.15);border:1px solid rgba(107,167,255,.3);font-size:13px}
+    .card-hd .badge{margin-left:auto;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(67,211,255,.12);border:1px solid rgba(67,211,255,.3);color:#b8ecff}
+    .card-bd{padding:16px}
+    .fg{margin-bottom:14px}
+    .fg label{display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px}
+    .fg input,.fg select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);font:inherit;font-size:13px;font-weight:600;outline:none;transition:border-color .15s}
+    .fg input:focus,.fg select:focus{border-color:rgba(107,167,255,.5)}
+    .fg select option{background:#0b1730;color:var(--text)}
+    .row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    .row4{display:grid;grid-template-columns:2fr 1fr 2fr 2fr;gap:10px}
+    .btn{border:1px solid rgba(255,255,255,.14);background:rgba(122,167,255,.14);color:rgba(255,255,255,.92);padding:10px 18px;border-radius:14px;cursor:pointer;font:inherit;font-weight:800;font-size:13px;display:inline-flex;align-items:center;gap:8px;transition:all .2s}
+    .btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+    .btn.save{background:linear-gradient(135deg,rgba(53,228,154,.22),rgba(67,211,255,.18));border-color:rgba(53,228,154,.4);color:#b4ffd8}
+    .btn.danger{background:rgba(255,94,115,.14);border-color:rgba(255,94,115,.3);color:#ffb0bb}
+    .btn.sm{padding:6px 12px;font-size:11px;border-radius:10px}
+    .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    /* Domain list */
+    .dom-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:rgba(0,0,0,.12);margin-bottom:6px;cursor:pointer;transition:all .15s}
+    .dom-item:hover,.dom-item.selected{border-color:rgba(107,167,255,.4);background:rgba(107,167,255,.08)}
+    .dom-item .name{font-weight:800;font-size:13px}
+    .dom-item .url{font-size:11px;color:var(--muted);margin-left:auto}
+    .dom-item .letter{padding:2px 8px;border-radius:6px;font-size:10px;font-weight:800;background:rgba(67,211,255,.12);border:1px solid rgba(67,211,255,.2);color:#b8ecff}
+    .dom-item .del{margin-left:8px;cursor:pointer;color:var(--bad);font-weight:800;opacity:.5;transition:opacity .15s}
+    .dom-item .del:hover{opacity:1}
+    /* Step row */
+    .step{display:grid;grid-template-columns:20px 30px 1.2fr .8fr 1.2fr 1.5fr .5fr .8fr .8fr 30px;gap:6px;align-items:center;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.1);margin-bottom:4px;font-size:11px;animation:stepIn .3s ease;transition:opacity .15s,border-color .15s}
+    @keyframes stepIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .step select,.step input{padding:7px 8px;border-radius:8px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);font:inherit;font-size:11px;font-weight:600;outline:none;width:100%}
+    .step select option{background:#0b1730}
+    .step .grip{cursor:grab;color:var(--muted);font-size:14px;text-align:center;user-select:none;opacity:.4;transition:opacity .15s}
+    .step .grip:hover{opacity:1}
+    .step.dragging{opacity:.3;border-color:rgba(107,167,255,.4)}
+    .step.drag-over{border-color:rgba(53,228,154,.5);background:rgba(53,228,154,.04)}
+    .step .idx{font-weight:900;color:var(--muted);text-align:center;font-size:12px}
+    .step .rm{cursor:pointer;color:var(--bad);font-weight:900;text-align:center;opacity:.5;transition:opacity .15s;font-size:14px}
+    .step .rm:hover{opacity:1}
+    .step-hdr{display:grid;grid-template-columns:20px 30px 1.2fr .8fr 1.2fr 1.5fr .5fr .8fr .8fr 30px;gap:6px;padding:4px 10px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+    .toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:800;background:rgba(53,228,154,.15);border:1px solid rgba(53,228,154,.4);color:#b4ffd8;display:none;animation:fadeIn .3s ease}
+    .toast.show{display:block}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .empty{text-align:center;padding:20px;color:var(--muted);font-size:13px;font-weight:700}
+    @media(max-width:900px){.step{grid-template-columns:1fr;gap:4px}.step-hdr{display:none}}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <span class="brand">⚡ Dahaka</span>
+  <a href="/config">⚙️ Config</a>
+  <a href="/automation" class="active">🤖 Automation</a>
+  <a href="/job">📊 Job</a>
+  <a href="/email-lists">📋 Email Lists</a>
+</nav>
+<div class="wrap">
+  <h2>🤖 Automation Builder</h2>
+
+  <!-- Add Domain -->
+  <div class="card">
+    <div class="card-hd"><span class="ico">🌐</span><h3>Domains</h3><span class="badge" id="dom-count">0</span></div>
+    <div class="card-bd">
+      <div class="row">
+        <div class="fg"><label>Name</label><input id="new-name" placeholder="Amazon"></div>
+        <div class="fg"><label>URL</label><input id="new-url" placeholder="https://brandregistry.amazon.com/"></div>
+        <div class="fg"><label>Letter Tag</label><input id="new-letter" placeholder="A" maxlength="2"></div>
+      </div>
+      <button class="btn sm" onclick="addDomain()">➕ Add Domain</button>
+      <div id="domain-list" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- Steps -->
+  <div class="card" id="steps-card" style="display:none">
+    <div class="card-hd"><span class="ico">⚡</span><h3>Automation Steps — <span id="steps-domain-name"></span></h3><span class="badge" id="step-count">0</span></div>
+    <div class="card-bd">
+      <div class="step-hdr"><span></span><span>#</span><span>Action</span><span>Selector</span><span>Selector Value</span><span>Input / URL</span><span>T/O</span><span>On Success</span><span>On Failure</span><span></span></div>
+      <div id="steps-list"></div>
+      <div class="btns">
+        <button class="btn sm" onclick="addStep()">➕ Add Step</button>
+        <button class="btn sm save" onclick="saveSteps()">💾 Save Steps</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast">✅ Saved</div>
+
+<script>
+const socket = io();
+let domains = [];
+let selectedDomainId = null;
+let steps = [];
+
+function render(){
+  const dl = document.getElementById('domain-list');
+  document.getElementById('dom-count').innerText = domains.length;
+  dl.innerHTML = domains.map(d=>`<div class="dom-item ${d.id===selectedDomainId?'selected':''}" onclick="selectDomain(${d.id})"><span class="letter">${d.letter||'—'}</span><span class="name">${d.name}</span><span class="url">${d.url}</span><span class="del" onclick="event.stopPropagation();delDomain(${d.id})">✕</span></div>`).join('');
+}
+
+function addDomain(){
+  const n=document.getElementById('new-name').value.trim();
+  const u=document.getElementById('new-url').value.trim();
+  const l=document.getElementById('new-letter').value.trim();
+  if(!n||!u) return;
+  socket.emit('add_domain',{name:n,url:u,letter:l});
+  document.getElementById('new-name').value='';
+  document.getElementById('new-url').value='';
+  document.getElementById('new-letter').value='';
+}
+
+function delDomain(id){
+  if(confirm('Delete this domain and its steps?')) socket.emit('delete_domain',{id});
+}
+
+function selectDomain(id){
+  selectedDomainId=id;
+  render();
+  fetch(`/api/domains/${id}/steps`).then(r=>r.json()).then(s=>{
+    steps=s;
+    renderSteps();
+    document.getElementById('steps-card').style.display='block';
+    const d=domains.find(x=>x.id===id);
+    document.getElementById('steps-domain-name').innerText=d?d.name:'';
+  });
+}
+
+function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function renderSteps(){
+  const sl=document.getElementById('steps-list');
+  document.getElementById('step-count').innerText=steps.length;
+  if(!steps.length){sl.innerHTML='<div class="empty">No steps yet. Click ➕ Add Step to start.</div>';return}
+  sl.innerHTML=steps.map((s,i)=>`<div class="step" draggable="true" data-idx="${i}" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="dropStep(event)" ondragend="dragEnd(event)">
+    <span class="grip">☰</span>
+    <span class="idx">${i+1}</span>
+    <select onchange="steps[${i}].action=this.value"><option value="navigate" ${s.action==='navigate'?'selected':''}>Navigate</option><option value="fill" ${s.action==='fill'?'selected':''}>Fill</option><option value="type" ${s.action==='type'?'selected':''}>Type</option><option value="click" ${s.action==='click'?'selected':''}>Click</option><option value="press_enter" ${s.action==='press_enter'?'selected':''}>Press Enter</option><option value="wait" ${s.action==='wait'?'selected':''}>Wait</option><option value="check_element" ${s.action==='check_element'?'selected':''}>Check Element</option><option value="check_url" ${s.action==='check_url'?'selected':''}>Check URL</option></select>
+    <select onchange="steps[${i}].selector_type=this.value"><option value="" ${!s.selector_type?'selected':''}>—</option><option value="id" ${s.selector_type==='id'?'selected':''}>ID</option><option value="name" ${s.selector_type==='name'?'selected':''}>Name</option><option value="css" ${s.selector_type==='css'?'selected':''}>CSS</option><option value="xpath" ${s.selector_type==='xpath'?'selected':''}>XPath</option><option value="tag" ${s.selector_type==='tag'?'selected':''}>Tag</option><option value="text" ${s.selector_type==='text'?'selected':''}>Text</option></select>
+    <input data-field="selector_value" data-step="${i}" value="${escAttr(s.selector_value)}" onchange="steps[${i}].selector_value=this.value" placeholder="selector">
+    <input data-field="input_value" data-step="${i}" value="${escAttr(s.input_value)}" onchange="steps[${i}].input_value=this.value" placeholder="{{EMAIL}} or URL">
+    <input type="number" value="${s.timeout||5}" onchange="steps[${i}].timeout=parseInt(this.value)" style="width:50px">
+    <select onchange="steps[${i}].on_success=this.value"><option value="continue" ${s.on_success==='continue'?'selected':''}>Continue</option><option value="mark_valid" ${s.on_success==='mark_valid'?'selected':''}>✓ Valid</option><option value="mark_invalid" ${s.on_success==='mark_invalid'?'selected':''}>✗ Invalid</option><option value="proxy_error" ${s.on_success==='proxy_error'?'selected':''}>Proxy Err</option><option value="captcha_error" ${s.on_success==='captcha_error'?'selected':''}>Captcha Err</option></select>
+    <select onchange="steps[${i}].on_failure=this.value"><option value="proxy_error" ${s.on_failure==='proxy_error'?'selected':''}>Proxy Err</option><option value="captcha_error" ${s.on_failure==='captcha_error'?'selected':''}>Captcha Err</option><option value="continue" ${s.on_failure==='continue'?'selected':''}>Continue</option><option value="mark_valid" ${s.on_failure==='mark_valid'?'selected':''}>✓ Valid</option><option value="mark_invalid" ${s.on_failure==='mark_invalid'?'selected':''}>✗ Invalid</option></select>
+    <span class="rm" onclick="steps.splice(${i},1);renderSteps()">✕</span>
+  </div>`).join('');
+  // Set values via DOM property to guarantee special chars (quotes, angle brackets) are preserved
+  sl.querySelectorAll('input[data-field]').forEach(inp=>{
+    const idx=parseInt(inp.dataset.step);
+    const field=inp.dataset.field;
+    if(steps[idx]) inp.value=steps[idx][field]||'';
+  });
+}
+
+let dragIdx=null;
+function dragStart(e){dragIdx=+e.currentTarget.dataset.idx;e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move'}
+function dragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move'}
+function dragEnter(e){e.preventDefault();e.currentTarget.classList.add('drag-over')}
+function dragLeave(e){e.currentTarget.classList.remove('drag-over')}
+function dropStep(e){e.preventDefault();e.currentTarget.classList.remove('drag-over');const toIdx=+e.currentTarget.dataset.idx;if(dragIdx!==null&&dragIdx!==toIdx){const item=steps.splice(dragIdx,1)[0];steps.splice(toIdx,0,item);renderSteps()}}
+function dragEnd(e){e.currentTarget.classList.remove('dragging');dragIdx=null}
+
+function addStep(){
+  steps.push({action:'fill',selector_type:'id',selector_value:'',input_value:'',timeout:5,on_success:'continue',on_failure:'proxy_error'});
+  renderSteps();
+}
+
+function saveSteps(){
+  if(!selectedDomainId) return;
+  socket.emit('save_steps',{domain_id:selectedDomainId,steps});
+}
+
+socket.on('domains_updated',d=>{domains=d;render();if(selectedDomainId&&!domains.find(x=>x.id===selectedDomainId)){selectedDomainId=null;document.getElementById('steps-card').style.display='none'}});
+socket.on('steps_saved',()=>{const t=document.getElementById('toast');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)});
+socket.on('error',d=>{alert(d.message||'An error occurred')});
+
+fetch('/api/domains').then(r=>r.json()).then(d=>{domains=d;render()});
+</script>
+</body>
+</html>

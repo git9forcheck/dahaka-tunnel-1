@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dahaka — Job</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{--bg:#081120;--bg2:#0b1730;--card:rgba(255,255,255,.08);--border:rgba(145,164,201,.18);--text:#e6edf7;--muted:#9ca9c4;--accent:#7394e6;--good:#35e49a;--bad:#ff5e73;--warn:#ffc14d;--radius:16px}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at top left,rgba(115,148,230,.14),transparent 34%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);min-height:100vh;padding-top:64px}
+    .nav{position:fixed;top:0;left:0;right:0;z-index:999;display:flex;align-items:center;gap:8px;padding:12px 18px;background:rgba(6,12,24,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+    .nav .brand{font-weight:900;font-size:16px;margin-right:12px;display:flex;align-items:center;gap:8px}
+    .nav a{padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;color:var(--muted);text-decoration:none;border:1px solid transparent;transition:all .15s}
+    .nav a:hover{color:var(--text);background:rgba(255,255,255,.04)}
+    .nav a.active{background:rgba(107,167,255,.18);border-color:rgba(141,165,241,.5);color:#fff;font-weight:800}
+    .wrap{max-width:1400px;margin:0 auto;padding:24px 18px}
+    .card{border-radius:var(--radius);border:1px solid var(--border);background:linear-gradient(135deg,rgba(11,23,48,.96),rgba(8,17,32,.98));overflow:hidden;margin-bottom:16px}
+    .card-hd{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(107,167,255,.08),rgba(53,228,154,.04))}
+    .card-hd h3{font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.3px}
+    .card-hd .ico{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:rgba(107,167,255,.15);border:1px solid rgba(107,167,255,.3);font-size:13px}
+    .card-hd .badge{margin-left:auto;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(67,211,255,.12);border:1px solid rgba(67,211,255,.3);color:#b8ecff}
+    .card-bd{padding:14px 16px;max-height:350px;overflow-y:auto}
+    .card-bd::-webkit-scrollbar{width:4px}.card-bd::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:4px}
+    .fg{margin-bottom:12px}
+    .fg label{display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px}
+    .fg select,.fg textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text);font:inherit;font-size:13px;font-weight:600;outline:none}
+    .fg select option{background:#0b1730}
+    .fg textarea{min-height:100px;resize:vertical;font-family:ui-monospace,monospace;font-size:12px}
+    .btn{border:1px solid rgba(255,255,255,.14);background:rgba(122,167,255,.14);color:rgba(255,255,255,.92);padding:10px 18px;border-radius:14px;cursor:pointer;font:inherit;font-weight:800;font-size:13px;display:inline-flex;align-items:center;gap:8px;transition:all .2s}
+    .btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+    .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .btn.start{background:linear-gradient(135deg,rgba(53,228,154,.22),rgba(67,211,255,.18));border-color:rgba(53,228,154,.4);color:#b4ffd8;min-width:140px;justify-content:center}
+    .btn.start.running{background:rgba(255,193,77,.14);border-color:rgba(255,193,77,.35);color:#fde68a}
+    .btn.pause{background:rgba(255,193,77,.14);border-color:rgba(255,193,77,.3);color:#fde68a;min-width:100px;justify-content:center}
+    .btn.pause.paused{background:rgba(107,167,255,.18);border-color:rgba(107,167,255,.4);color:#b8d9ff}
+    .btn.stop{background:rgba(255,94,115,.14);border-color:rgba(255,94,115,.3);color:#ffb0bb;min-width:100px;justify-content:center}
+    .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+    /* Progress */
+    .prog-wrap{padding:14px 18px;border-radius:var(--radius);border:1px solid var(--border);background:var(--card);margin-bottom:16px}
+    .prog-label{display:flex;justify-content:space-between;margin-bottom:8px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+    .prog-bar{height:10px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.3)}
+    .prog-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#35e49a,#43d3ff,#a78bfa);transition:width .7s;box-shadow:0 0 16px rgba(67,211,255,.35);position:relative}
+    .prog-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);animation:shimmer 2s infinite}
+    @keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(200%)}}
+    .prog-pct{font-size:13px;font-weight:950;color:#43d3ff;font-family:ui-monospace,monospace}
+    /* Stats */
+    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+    .stat{text-align:center;padding:14px 8px;border-radius:var(--radius);border:1px solid var(--border);background:var(--card)}
+    .stat .k{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:800}
+    .stat .v{font-size:22px;font-weight:950;margin-top:3px;font-family:ui-monospace,monospace}
+    .v.good{color:var(--good)}.v.bad{color:var(--bad)}.v.warn{color:var(--warn)}.v.cyan{color:#43d3ff}
+    .grids{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+    .mid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+    .bottom{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    /* Browser step tracker */
+    .bst-card{margin-bottom:16px}
+    .bst-grid{display:grid;gap:6px}
+    .bst-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.05);background:rgba(0,0,0,.12);transition:all .3s}
+    .bst-row.bst-disabled{opacity:.3;filter:grayscale(.7);pointer-events:none}
+    .bst-row.bst-active{border-color:rgba(53,228,154,.18);background:rgba(53,228,154,.04)}
+    .bst-label{font-size:9px;font-weight:900;color:var(--accent);min-width:32px;text-align:center;padding:3px 6px;border-radius:6px;background:rgba(107,167,255,.1);border:1px solid rgba(107,167,255,.2);flex-shrink:0}
+    .bst-row.bst-disabled .bst-label{color:var(--muted);background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
+    .bst-domain{font-size:8px;font-weight:800;padding:2px 7px;border-radius:5px;background:rgba(67,211,255,.08);border:1px solid rgba(67,211,255,.15);color:#a3e4ff;flex-shrink:0;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .bst-email{font-size:9px;font-weight:700;color:var(--muted);width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+    .bst-status-tag{font-size:7px;font-weight:900;padding:2px 6px;border-radius:4px;flex-shrink:0;text-transform:uppercase;letter-spacing:.3px}
+    .bst-status-tag.idle{background:rgba(255,255,255,.06);color:var(--muted)}
+    .bst-status-tag.stopped{background:rgba(255,94,115,.1);color:#ffb0bb}
+    .bst-pills{display:flex;gap:3px;flex:1;overflow-x:auto;padding:2px 0}
+    .bst-pills::-webkit-scrollbar{height:3px}.bst-pills::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+    .bst-pill{height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:var(--muted);transition:all .25s;flex-shrink:0;padding:0 8px;gap:4px;white-space:nowrap}
+    .bst-pill .pill-num{font-size:7px;font-weight:900;opacity:.6}
+    .bst-pill .pill-act{text-transform:capitalize}
+    .bst-pill.done{background:rgba(53,228,154,.14);border-color:rgba(53,228,154,.35);color:#8affc6}
+    .bst-pill.done .pill-num{opacity:.8}
+    .bst-pill.running{background:rgba(255,193,77,.14);border-color:rgba(255,193,77,.4);color:#fde68a;animation:stepPulse 1.2s ease infinite}
+    .bst-pill.failed{background:rgba(255,94,115,.14);border-color:rgba(255,94,115,.35);color:#ffb0bb}
+    .bst-pill.captcha{background:rgba(200,100,255,.14);border-color:rgba(200,100,255,.35);color:#e0b0ff}
+    @keyframes stepPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.65;transform:scale(.97)}}
+    .bst-cnts{display:flex;gap:4px;flex-shrink:0;margin-left:auto}
+    .bst-cnt{font-size:8px;font-weight:900;padding:2px 5px;border-radius:4px}
+    .bst-cnt.ok{background:rgba(53,228,154,.1);color:#b4ffd8}
+    .bst-cnt.bad{background:rgba(255,94,115,.1);color:#ffb0bb}
+    .bst-cnt.tot{background:rgba(107,167,255,.1);color:#b8d9ff}
+    /* Step items */
+    .as-item{display:flex;align-items:center;gap:8px;padding:6px 10px;margin-bottom:4px;border-radius:8px;font-size:11px;font-weight:700;border:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.1);transition:all .3s}
+    .as-item.step-done{border-color:rgba(53,228,154,.35);background:rgba(53,228,154,.08)}
+    .as-item.step-done .as-idx{background:rgba(53,228,154,.25);border-color:rgba(53,228,154,.4);color:#b4ffd8}
+    .as-item.step-running{border-color:rgba(255,193,77,.4);background:rgba(255,193,77,.08);animation:stepPulse 1.2s ease infinite}
+    .as-item.step-running .as-idx{background:rgba(255,193,77,.25);border-color:rgba(255,193,77,.4);color:#fde68a}
+    .as-item.step-failed{border-color:rgba(255,94,115,.35);background:rgba(255,94,115,.08)}
+    .as-item.step-failed .as-idx{background:rgba(255,94,115,.25);border-color:rgba(255,94,115,.4);color:#ffb0bb}
+    @keyframes stepPulse{0%,100%{opacity:1}50%{opacity:.7}}
+    .as-item .as-idx{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;background:rgba(107,167,255,.15);border:1px solid rgba(107,167,255,.25);color:#b8d9ff;flex-shrink:0;transition:all .3s}
+    .as-item .as-act{padding:2px 8px;border-radius:6px;font-size:10px;font-weight:800;text-transform:uppercase;background:rgba(67,211,255,.1);border:1px solid rgba(67,211,255,.2);color:#b8ecff}
+    .as-item .as-desc{color:var(--muted);flex:1;font-weight:600}
+    .as-item .as-out{font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px}
+    .as-out.ok{background:rgba(53,228,154,.1);color:#b4ffd8}
+    .as-out.fail{background:rgba(255,94,115,.1);color:#ffb0bb}
+    .as-item .as-status{font-size:9px;font-weight:900;padding:1px 6px;border-radius:4px;margin-left:auto}
+    .as-status.st-done{color:#b4ffd8}
+    .as-status.st-running{color:#fde68a}
+    .as-status.st-failed{color:#ffb0bb}
+    /* Items */
+    .px-item{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;margin-bottom:3px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid transparent}
+    .px-item.active{background:rgba(53,228,154,.08);border-color:rgba(53,228,154,.2);color:#b4ffd8}
+    .px-item.failed{background:rgba(255,94,115,.08);border-color:rgba(255,94,115,.2);color:#ffb0bb}
+    .px-item.available{background:rgba(255,255,255,.03);color:var(--muted)}
+    .px-item.retrying{background:rgba(255,193,77,.08);border-color:rgba(255,193,77,.2);color:#fde68a}
+    .px-item.checking{background:rgba(67,211,255,.08);border-color:rgba(67,211,255,.25);color:#a3e4ff;animation:checkPulse 1.4s ease-in-out infinite}
+    @keyframes checkPulse{0%,100%{opacity:1;border-color:rgba(67,211,255,.25)}50%{opacity:.7;border-color:rgba(67,211,255,.5)}}
+    .px-item .retries{font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.06)}
+    .em-item{padding:6px 10px;margin-bottom:3px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid rgba(255,255,255,.06)}
+    .em-item.status-present{border-color:rgba(53,228,154,.25);color:#b4ffd8}
+    .em-item.status-failure{border-color:rgba(255,94,115,.25);color:#ffb0bb}
+    .log-item{padding:3px 0;font-size:11px;font-family:ui-monospace,monospace;color:rgba(255,255,255,.7);border-bottom:1px solid rgba(255,255,255,.04);display:flex;gap:8px}
+    .log-item .ts{color:var(--muted);flex-shrink:0;font-weight:700}
+    .log-item.good .msg{color:var(--good)}.log-item.bad .msg{color:var(--bad)}.log-item.warn .msg{color:var(--warn)}
+    .threads{display:grid;grid-template-columns:1fr;gap:4px;margin-bottom:10px}
+    .th-card{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.12);transition:all .2s}
+    .th-card.working{border-color:rgba(53,228,154,.2);background:rgba(53,228,154,.04)}
+    .th-card.idle{border-color:rgba(107,167,255,.15)}
+    .th-card.paused{border-color:rgba(255,193,77,.2);background:rgba(255,193,77,.04)}
+    .th-card.stopped{border-color:rgba(255,94,115,.15);background:rgba(255,94,115,.04)}
+    .th-id{font-size:9px;font-weight:900;padding:3px 6px;border-radius:5px;background:rgba(107,167,255,.12);color:var(--accent);flex-shrink:0}
+    .th-domain{font-size:8px;font-weight:800;padding:2px 6px;border-radius:4px;background:rgba(67,211,255,.08);color:#a3e4ff;flex-shrink:0}
+    .th-status{font-size:9px;font-weight:700;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .th-status.act{color:var(--good)}
+    .th-mini{font-size:8px;font-weight:800;padding:1px 4px;border-radius:3px;flex-shrink:0}
+    .th-mini.ok{background:rgba(53,228,154,.1);color:#b4ffd8}
+    .th-mini.bad{background:rgba(255,94,115,.1);color:#ffb0bb}
+    .rates{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+    .rate{text-align:center;padding:10px 6px;border-radius:12px;border:1px solid var(--border);background:var(--card)}
+    .rate .k{font-size:9px;text-transform:uppercase;color:var(--muted);font-weight:800}
+    .rate .v{font-size:15px;font-weight:900;margin-top:2px;color:rgba(255,255,255,.8);font-family:ui-monospace,monospace}
+    .chart-wrap{max-height:200px;display:flex;justify-content:center;padding-top:8px}
+    .info-row{display:flex;gap:16px;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:12px;flex-wrap:wrap}
+    .info-row span{display:flex;gap:4px}.info-row .val{color:var(--text)}
+    @media(max-width:1000px){.stats{grid-template-columns:repeat(3,1fr)}.grids,.mid3,.bottom{grid-template-columns:1fr}.rates{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <span class="brand">⚡ Dahaka</span>
+  <a href="/config">⚙️ Config</a>
+  <a href="/automation">🤖 Automation</a>
+  <a href="/job" class="active">📊 Job</a>
+  <a href="/email-lists">📋 Email Lists</a>
+</nav>
+<div class="wrap">
+  <!-- Launch -->
+  <div class="card">
+    <div class="card-hd"><span class="ico">🚀</span><h3>Launch Job</h3></div>
+    <div class="card-bd" style="max-height:none">
+      <div class="controls">
+        <div class="fg" style="flex:1;min-width:200px;margin:0"><label>Domain</label><select id="domain-sel"></select></div>
+        <button id="start-btn" class="btn start" onclick="startJob()">▶ Start Job</button>
+        <button id="pause-btn" class="btn pause" onclick="togglePause()" style="display:none">⏸ Pause</button>
+        <button id="stop-btn" class="btn stop" onclick="stopJob()" style="display:none">⏹ Stop</button>
+        <button id="mode-btn" class="btn" onclick="togglePasteMode()" style="background:rgba(200,100,255,.14);border-color:rgba(200,100,255,.3);color:#e0b0ff;display:none">Mode: Add</button>
+      </div>
+      <!-- Email List download section -->
+      <div style="margin-top:12px;padding:12px;border-radius:12px;border:1px solid var(--border);background:rgba(0,0,0,.12)">
+        <div class="controls" style="margin-bottom:8px">
+          <div class="fg" style="flex:1;min-width:200px;margin:0"><label>📋 Load from Email List</label><select id="list-sel"><option value="">— None (manual paste) —</option></select></div>
+          <button class="btn" style="background:rgba(107,167,255,.18);border-color:rgba(107,167,255,.35);color:#b8d9ff;padding:8px 14px;font-size:12px" onclick="downloadList('all')">📥 Download Entire List</button>
+          <button class="btn" style="background:rgba(255,193,77,.14);border-color:rgba(255,193,77,.35);color:#fde68a;padding:8px 14px;font-size:12px" onclick="downloadList('unverified')">📥 Download Unverified List</button>
+        </div>
+        <div style="font-size:10px;color:var(--muted);font-weight:600">Select a list and click Download to load emails into the textarea. "Unverified" loads only emails not yet checked for the selected domain(s).</div>
+      </div>
+      <div class="fg" style="margin-top:12px">
+        <label>Emails (one per line, or paste from file)</label>
+        <textarea id="emails-input" placeholder="email1@example.com&#10;email2@example.com&#10;..."></textarea>
+      </div>
+      <div class="info-row">
+        <span>STATUS: <span class="val" id="status-text">IDLE</span></span>
+        <span>UPTIME: <span class="val" id="uptime">00:00:00</span></span>
+        <span>ETA: <span class="val" id="eta" style="color:var(--warn)">—</span></span>
+        <span>JOB: <span class="val" id="job-id">—</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="prog-wrap">
+    <div class="prog-label"><span>PROGRESS — <span id="processed">0</span> / <span id="total">0</span></span><span class="prog-pct" id="prog-pct">0.0%</span></div>
+    <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat"><div class="k">Total</div><div class="v cyan" id="s-total">0</div></div>
+    <div class="stat"><div class="k">Valid</div><div class="v good" id="s-valid">0</div></div>
+    <div class="stat"><div class="k">Invalid</div><div class="v bad" id="s-invalid">0</div></div>
+    <div class="stat"><div class="k">Proxies Active</div><div class="v good" id="s-pxa">0</div></div>
+    <div class="stat"><div class="k">Proxies Failed</div><div class="v bad" id="s-pxf">0</div></div>
+  </div>
+  <div class="rates">
+    <div class="rate"><div class="k">Per Hour</div><div class="v" id="r-h">0</div></div>
+    <div class="rate"><div class="k">Per Day</div><div class="v" id="r-d">0</div></div>
+    <div class="rate"><div class="k">Per Week</div><div class="v" id="r-w">0</div></div>
+    <div class="rate"><div class="k">Per Month</div><div class="v" id="r-m">0</div></div>
+  </div>
+
+  <!-- Proxies -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-hd"><span class="ico">🌐</span><h3>Proxies</h3><span class="badge" id="px-cnt">0</span></div>
+    <div class="card-bd" id="px-list"></div>
+  </div>
+  <!-- Per-Browser Automation Steps -->
+  <div class="card bst-card">
+    <div class="card-hd"><span class="ico">⚡</span><h3>Browser Step Tracker</h3><span class="badge" id="as-domain">—</span></div>
+    <div class="card-bd" style="max-height:400px" id="bst-container"><div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Start a job to see per-browser steps</div></div>
+  </div>
+
+  <!-- Cards Row 2: Chart + Browser Threads -->
+  <div class="mid3">
+    <div class="card"><div class="card-hd"><span class="ico">📊</span><h3>Results</h3></div><div class="card-bd"><div class="chart-wrap"><canvas id="chart"></canvas></div></div></div>
+    <div class="card"><div class="card-hd"><span class="ico">📋</span><h3>Browser Threads</h3></div><div class="card-bd" id="mon"><div class="threads" id="thr"></div></div></div>
+    <div class="card"><div class="card-hd"><span class="ico">📧</span><h3>Activity</h3><span class="badge" id="em-cnt">0</span></div><div class="card-bd" id="em-list"></div></div>
+  </div>
+
+  <!-- Bottom Row: Logs + History -->
+  <div class="bottom">
+    <div class="card"><div class="card-hd"><span class="ico">🖥️</span><h3>Live Log</h3></div><div class="card-bd" id="log-card"><div id="logs"></div></div></div>
+    <div class="card"><div class="card-hd"><span class="ico">📜</span><h3>Job History</h3></div><div class="card-bd" id="hist"></div></div>
+  </div>
+</div>
+
+<script>
+const socket = io();
+Chart.defaults.color='rgba(255,255,255,.6)';
+const chart = new Chart(document.getElementById('chart').getContext('2d'),{type:'doughnut',data:{labels:['Valid','Invalid','Pending'],datasets:[{data:[0,0,0],backgroundColor:['rgba(53,228,154,.7)','rgba(255,94,115,.7)','rgba(255,255,255,.1)'],borderColor:['rgba(53,228,154,1)','rgba(255,94,115,1)','rgba(255,255,255,.2)'],borderWidth:1}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom',labels:{padding:10,boxWidth:10,font:{size:10,weight:700}}}}}});
+
+function startJob(){
+  const btn=document.getElementById('start-btn');
+  if(btn.disabled) return;
+  const sel=document.getElementById('domain-sel');
+  const val=sel.value;
+  const emails=document.getElementById('emails-input').value;
+  if(!val||!emails.trim()){alert('Select domain and enter emails');return}
+  let body={};
+  if(val.startsWith('group:')){
+    body={domain_ids:val.replace('group:','').split(',').map(Number),emails};
+  } else {
+    body={domain_id:parseInt(val),emails};
+  }
+  // Link to email list if selected
+  const listSel=document.getElementById('list-sel');
+  if(listSel && listSel.value) body.email_list_id=parseInt(listSel.value);
+  btn.disabled=true;btn.innerHTML='⏳ Starting...';
+  fetch('/api/job/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(r=>r.json().then(d=>({ok:r.ok,data:d})))
+    .then(({ok,data})=>{
+      if(!ok){alert(data.error||'Failed to start');btn.disabled=false;btn.innerHTML='▶ Start Job';return}
+      btn.innerHTML='⏳ Running...';btn.classList.add('running');
+      document.getElementById('pause-btn').style.display='inline-flex';
+      document.getElementById('stop-btn').style.display='inline-flex';
+      document.getElementById('mode-btn').style.display='inline-flex';
+      document.getElementById('pause-btn').innerHTML='⏸ Pause';
+      document.getElementById('pause-btn').classList.remove('paused');
+    })
+    .catch(e=>{alert('Error: '+e.message);btn.disabled=false;btn.innerHTML='▶ Start Job'});
+}
+function togglePasteMode(){
+  fetch('/api/toggle-paste-mode', {method:'POST'})
+    .then(r=>r.json())
+    .then(d=>{
+      const btn=document.getElementById('mode-btn');
+      btn.innerHTML='Mode: '+(d.mode==='new'?'New':'Add');
+    });
+}
+function togglePause(){
+  const pb=document.getElementById('pause-btn');
+  if(pb.classList.contains('paused')){
+    socket.emit('resume_job');
+    pb.innerHTML='⏸ Pause';pb.classList.remove('paused');
+  } else {
+    socket.emit('pause_job');
+    pb.innerHTML='▶ Resume';pb.classList.add('paused');
+  }
+}
+function stopJob(){
+  const stopBtn=document.getElementById('stop-btn');
+  stopBtn.disabled=true;stopBtn.innerHTML='⏹ Stopping...';
+  document.getElementById('start-btn').disabled=true;
+  document.getElementById('pause-btn').disabled=true;
+  document.getElementById('mode-btn').disabled=true;
+  socket.emit('stop_job');
+  // No overlay or restart polling — server stays running.
+  // UI will update via 'update' events showing STOPPING status,
+  // then 'cleanup_complete' event resets everything.
+}
+function resetUI(){
+  // Reset all buttons
+  const sb=document.getElementById('start-btn');
+  sb.disabled=false;sb.innerHTML='▶ Start Job';sb.classList.remove('running');
+  const pb=document.getElementById('pause-btn');
+  pb.style.display='none';pb.disabled=false;pb.classList.remove('paused');pb.innerHTML='⏸ Pause';
+  const stb=document.getElementById('stop-btn');
+  stb.style.display='none';stb.disabled=false;stb.innerHTML='⏹ Stop';
+  const mb=document.getElementById('mode-btn');
+  if(mb){mb.style.display='none';mb.disabled=false;}
+  // Reset all dashboard values
+  document.getElementById('status-text').innerText='IDLE';
+  document.getElementById('uptime').innerText='00:00:00';
+  document.getElementById('eta').innerText='—';
+  document.getElementById('job-id').innerText='—';
+  document.getElementById('processed').innerText='0';
+  document.getElementById('total').innerText='0';
+  document.getElementById('prog-fill').style.width='0%';
+  document.getElementById('prog-pct').innerText='0.0%';
+  document.getElementById('s-total').innerText='0';
+  document.getElementById('s-valid').innerText='0';
+  document.getElementById('s-invalid').innerText='0';
+  document.getElementById('s-pxa').innerText='0';
+  document.getElementById('s-pxf').innerText='0';
+  document.getElementById('r-h').innerText='0';
+  document.getElementById('r-d').innerText='0';
+  document.getElementById('r-w').innerText='0';
+  document.getElementById('r-m').innerText='0';
+  document.getElementById('px-list').innerHTML='';
+  document.getElementById('px-cnt').innerText='0';
+  document.getElementById('em-list').innerHTML='';
+  document.getElementById('em-cnt').innerText='0';
+  document.getElementById('thr').innerHTML='';
+  document.getElementById('bst-container').innerHTML='<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">Start a job to see per-browser steps</div>';
+  document.getElementById('as-domain').innerText='—';
+  chart.data.datasets[0].data=[0,0,0];chart.update();
+  loadHistory();
+}
+function resetButtons(){ resetUI(); }
+socket.on('check_started',d=>{document.getElementById('job-id').innerText=d.job_id||'—'});
+socket.on('check_finished',resetButtons);
+socket.on('job_stopped',()=>{
+  // Don't fully reset yet — server is still cleaning up.
+  // The 'update' events will show STOPPING status.
+  // Full reset happens on 'cleanup_complete'.
+  document.getElementById('status-text').innerText='STOPPING';
+});
+socket.on('cleanup_complete',()=>{
+  resetUI();
+  loadHistory();
+});
+socket.on('job_paused',()=>{const pb=document.getElementById('pause-btn');pb.innerHTML='▶ Resume';pb.classList.add('paused')});
+socket.on('job_resumed',()=>{const pb=document.getElementById('pause-btn');pb.innerHTML='⏸ Pause';pb.classList.remove('paused')});
+socket.on('error',d=>{alert(d.message||'An error occurred');resetButtons()});
+
+socket.on('update',function(d){
+  const b=document.getElementById('start-btn');
+  if(d.status==='running'){b.disabled=true;b.innerHTML='⏳ Running...';b.classList.add('running');document.getElementById('pause-btn').style.display='inline-flex';document.getElementById('stop-btn').style.display='inline-flex';document.getElementById('mode-btn').style.display='inline-flex'}
+  else if(d.status==='paused'){b.disabled=true;b.innerHTML='⏸ Paused';b.classList.add('running');document.getElementById('pause-btn').style.display='inline-flex';document.getElementById('stop-btn').style.display='inline-flex';document.getElementById('mode-btn').style.display='inline-flex'}
+  else if(d.status==='stopping'){b.disabled=true;b.innerHTML='⏹ Stopping...';b.classList.add('running');document.getElementById('pause-btn').style.display='none';document.getElementById('stop-btn').style.display='inline-flex';document.getElementById('stop-btn').disabled=true;document.getElementById('stop-btn').innerHTML='⏹ Stopping...';document.getElementById('mode-btn').style.display='none'}
+  else if(d.status!=='running'&&d.status!=='paused'&&d.status!=='idle'&&d.status!=='stopping'){resetButtons()}
+  document.getElementById('status-text').innerText=d.status.toUpperCase();
+  if(d.job_id) document.getElementById('job-id').innerText=d.job_id;
+  let ts=Math.floor(d.uptime),h=Math.floor(ts/3600),m=Math.floor((ts%3600)/60),s=ts%60;
+  const pad=n=>n<10?'0'+n:n;
+  document.getElementById('uptime').innerText=`${pad(h)}:${pad(m)}:${pad(s)}`;
+  const pct=d.total_emails>0?d.processed/d.total_emails*100:0;
+  document.getElementById('processed').innerText=d.processed;
+  document.getElementById('total').innerText=d.total_emails;
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-pct').innerText=pct.toFixed(1)+'%';
+  document.getElementById('s-total').innerText=d.total_emails;
+  document.getElementById('s-valid').innerText=d.success;
+  document.getElementById('s-invalid').innerText=d.failure;
+  document.getElementById('s-pxa').innerText=d.proxies.active||0;
+  document.getElementById('s-pxf').innerText=d.proxies.failed||0;
+  const eps=d.uptime>0?d.processed/d.uptime:0;
+  document.getElementById('r-h').innerText=Math.round(eps*3600);
+  document.getElementById('r-d').innerText=Math.round(eps*86400);
+  document.getElementById('r-w').innerText=Math.round(eps*604800);
+  document.getElementById('r-m').innerText=Math.round(eps*2592000);
+  const rem=d.total_emails-d.processed;
+  document.getElementById('eta').innerText=eps>0?`${Math.floor(rem/eps/3600)}h ${Math.floor((rem/eps%3600)/60)}m`:'—';
+  chart.data.datasets[0].data=[d.success,d.failure,d.total_emails-d.processed];chart.update();
+  const pxStatusLabel=s=>s==='checking'?'CHECKING..':s.toUpperCase();
+  document.getElementById('px-list').innerHTML=(d.proxies_list||[]).map(p=>`<div class="px-item ${p.status}"><span>${p.proxy} — ${pxStatusLabel(p.status)}</span><span class="retries">${p.retries||0}</span></div>`).join('');
+  document.getElementById('px-cnt').innerText=(d.proxies_list||[]).length;
+  document.getElementById('em-list').innerHTML=(d.current_emails||[]).map(e=>{let c=e.status==='Present'?'status-present':e.status==='Not Present'?'status-failure':'';return`<div class="em-item ${c}">${e.email}: ${e.status}${e.domain?' — '+e.domain:''}</div>`}).join('');
+  document.getElementById('em-cnt').innerText=(d.current_emails||[]).length;
+  const bt=d.browser_threads||{};
+  // Enhanced Browser Threads
+  const bstats=d.browser_stats||{};
+  const bdoms=d.browser_domains||{};
+  document.getElementById('thr').innerHTML=Object.entries(bt).sort().map(([id,st])=>{
+    let c=st==='paused'?'paused':st==='stopped'?'stopped':(st.startsWith('checking')||st.startsWith('retry'))?'working':'idle';
+    const ico=c==='working'?'⚡':c==='paused'?'⏸':c==='stopped'?'⏹':'💤';
+    const bs=bstats[id]||{};
+    const dom=bdoms[id]||'';
+    const email=st.startsWith('checking:')?st.split(':')[1]:st.startsWith('retry:')?st.split(':')[1]:'';
+    const statusTxt=email?email:(st==='idle'?'Waiting...':st);
+    return`<div class="th-card ${c}"><span class="th-id">${ico} ${id.replace('browser-','B')}</span>${dom?`<span class="th-domain">${dom}</span>`:''}<span class="th-status ${c==='working'?'act':''}">${statusTxt}</span><span class="th-mini ok">✓${bs.success||0}</span><span class="th-mini bad">✗${bs.fail||0}</span></div>`;
+  }).join('');
+  document.getElementById('logs').innerHTML=(d.log_entries||[]).slice(-20).reverse().map(l=>`<div class="log-item ${l.level}"><span class="ts">${l.timestamp}</span><span class="msg">${l.message}</span></div>`).join('');
+  // Per-browser step progress — pills from automation steps
+  if(d.domain_name) document.getElementById('as-domain').innerText=d.domain_name;
+  const steps=d.automation_steps||[];
+  const sp=d.step_progress||{};
+  if(steps.length && Object.keys(bt).length){
+    const actionLabel=a=>{const m={'click':'Click','type':'Type','wait':'Wait','navigate':'Navigate','press_enter':'Enter','select':'Select','check_element':'Check','check_url':'Check URL','fill':'Fill'};return m[a]||a};
+    let html='<div class="bst-grid">';
+    // Sort: active browsers first, then idle/stopped
+    const entries=Object.entries(bt).sort((a,b)=>{
+      const aActive=a[1].startsWith('checking')||a[1].startsWith('retry');
+      const bActive=b[1].startsWith('checking')||b[1].startsWith('retry');
+      if(aActive&&!bActive) return -1;
+      if(!aActive&&bActive) return 1;
+      return a[0].localeCompare(b[0]);
+    });
+    entries.forEach(([tid,st])=>{
+      const email=st.startsWith('checking:')?st.split(':')[1]:st.startsWith('retry:')?st.split(':')[1]:'';
+      const tp=sp[tid]||{};
+      const bs=bstats[tid]||{};
+      const dom=bdoms[tid]||'';
+      const isActive=st.startsWith('checking')||st.startsWith('retry');
+      const isStopped=st==='stopped';
+      const isDisabled=!isActive;
+      const rowClass=isDisabled?'bst-disabled':isActive?'bst-active':'';
+      const pills=steps.map((s,i)=>{
+        const desc=s.description||actionLabel(s.action);
+        if(isDisabled){
+          return`<div class="bst-pill" title="Step ${i+1}: ${desc}"><span class="pill-num">${i+1}</span><span class="pill-act">${actionLabel(s.action)}</span></div>`;
+        }
+        const stat=tp[i]||'';
+        const ico=stat==='done'?'✓ ':stat==='running'?'● ':stat==='failed'?'✗ ':'';
+        return`<div class="bst-pill ${stat}" title="Step ${i+1}: ${desc} — ${stat||'pending'}"><span class="pill-num">${ico}${i+1}</span><span class="pill-act">${actionLabel(s.action)}</span></div>`;
+      }).join('');
+      const emailOrStatus=isActive?email:(isStopped?'<span class="bst-status-tag stopped">⏹ CLOSED</span>':'<span class="bst-status-tag idle">💤 IDLE</span>');
+      html+=`<div class="bst-row ${rowClass}"><span class="bst-label">${tid.replace('browser-','B')}</span>${dom?`<span class="bst-domain" title="${dom}">${dom}</span>`:''}<span class="bst-email" title="${email||st}">${emailOrStatus}</span><div class="bst-pills">${pills}</div><div class="bst-cnts"><span class="bst-cnt ok">✓${bs.success||0}</span><span class="bst-cnt bad">✗${bs.fail||0}</span><span class="bst-cnt tot">${bs.tested||0}</span></div></div>`;
+    });
+    html+='</div>';
+    document.getElementById('bst-container').innerHTML=html;
+  }
+});
+
+function loadHistory(){
+  fetch('/api/jobs').then(r=>r.json()).then(jobs=>{
+    document.getElementById('hist').innerHTML=jobs.map(j=>`<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:12px"><span style="font-weight:800;color:#43d3ff">${j.id}</span> — <span style="color:${j.status==='finished'?'var(--good)':'var(--bad)'}; font-weight:700">${j.status}</span> — ✓${j.success||0} ✗${j.failure||0} — <span style="color:var(--muted)">${j.started_at||''}</span></div>`).join('')||'<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px">No jobs yet</div>';
+  });
+}
+
+// Build domain selector with grouped option from config
+Promise.all([
+  fetch('/api/domains').then(r=>r.json()),
+  fetch('/api/config').then(r=>r.json())
+]).then(([doms, cfg])=>{
+  const sel=document.getElementById('domain-sel');
+  let html='';
+  // Check if config has a browser_domain_map with multiple unique domains
+  let mapDomIds=[];
+  try{
+    const bdm=cfg.browser_domain_map?JSON.parse(cfg.browser_domain_map):{};
+    mapDomIds=[...new Set(Object.values(bdm))];
+  }catch(e){}
+  if(mapDomIds.length>1){
+    const names=mapDomIds.map(id=>{const d=doms.find(x=>x.id===id);return d?d.name:'?'}).join(', ');
+    html+=`<option value="group:${mapDomIds.join(',')}">🌐 ${mapDomIds.length} domains — ${names}</option>`;
+    html+='<option disabled>───────────────</option>';
+  }
+  html+=doms.map(d=>`<option value="${d.id}">${d.letter?d.letter+' — ':''}${d.name}</option>`).join('');
+  sel.innerHTML=html;
+});
+loadHistory();
+
+// Load email lists into selector
+fetch('/api/email-lists').then(r=>r.json()).then(lists=>{
+  const sel=document.getElementById('list-sel');
+  let html='<option value="">— None (manual paste) —</option>';
+  lists.forEach(l=>{html+=`<option value="${l.id}">${l.name} (${l.total_emails} emails)</option>`});
+  sel.innerHTML=html;
+});
+
+// Download emails from selected list into textarea
+function downloadList(mode){
+  const listSel=document.getElementById('list-sel');
+  if(!listSel.value){alert('Select an email list first');return}
+  const lid=listSel.value;
+  const domSel=document.getElementById('domain-sel');
+  const domVal=domSel.value;
+  let domIds='';
+  if(domVal.startsWith('group:')){domIds=domVal.replace('group:','');}
+  else if(domVal){domIds=domVal;}
+  let url='/api/email-lists/'+lid+'/emails?mode='+mode;
+  if(domIds) url+='&domain_ids='+domIds;
+  fetch(url).then(r=>r.json()).then(d=>{
+    if(!d.emails||!d.emails.length){alert('No '+(mode==='unverified'?'unverified ':'')+'emails found');return}
+    document.getElementById('emails-input').value=d.emails.join('\n');
+  }).catch(e=>alert('Error: '+e.message));
+}
+</script>
+</body>
+</html>
